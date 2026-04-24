@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Online</title>
+  <link rel="icon" id="favicon" href="" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ================================================================
+       CSS CUSTOM PROPERTIES — overridden at runtime via JS from CONFIG
+       ================================================================ */
+    :root {
+      --accent:        #c084fc;
+      --accent-dark:   #9333ea;
+      --accent-tint:   rgba(192,132,252,0.07);
+      --accent-focus:  rgba(192,132,252,0.28);
+      --bg:            #fafafa;
+      --surface:       #ffffff;
+      --border:        #e5e7eb;
+      --text-1:        #111827;
+      --text-2:        #6b7280;
+      --text-3:        #9ca3af;
+      --radius:        12px;
+      --radius-sm:     8px;
+      --shadow:        0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md:     0 4px 14px rgba(0,0,0,0.09);
+    }
+
+    /* ================================================================
+       RESET & BASE
+       ================================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      line-height: 1.6;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ================================================================
+       HEADER
+       ================================================================ */
+    #site-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .logo-img {
+      max-width: 140px;
+      max-height: 50px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .biz-name {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.3px;
+    }
+
+    .biz-tagline {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-top: 3px;
+    }
+
+    /* ================================================================
+       MAIN & LAYOUT
+       ================================================================ */
+    main {
+      padding: 24px 0 100px;
+    }
+
+    /* ================================================================
+       PROGRESS BAR
+       ================================================================ */
+    .progress-wrap {
+      margin-bottom: 28px;
+    }
+
+    .progress-steps {
+      display: flex;
+      align-items: flex-start;
+      position: relative;
+    }
+
+    .progress-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Connecting line — on every non-last step */
+    .progress-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: calc(50% + 18px);
+      right: calc(-50% + 18px);
+      height: 2px;
+      background: var(--border);
+      transition: background 0.35s ease;
+      z-index: 0;
+    }
+
+    .progress-step.completed:not(:last-child)::after {
+      background: var(--accent);
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-3);
+      transition: all 0.3s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .progress-step.active   .step-circle { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .progress-step.completed .step-circle { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+    .step-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-3);
+      margin-top: 6px;
+      text-align: center;
+      white-space: nowrap;
+      transition: color 0.3s ease;
+    }
+
+    .progress-step.active    .step-label,
+    .progress-step.completed .step-label { color: var(--text-2); }
+
+    /* ================================================================
+       STEP TRANSITIONS
+       ================================================================ */
+    .steps-outer { overflow: hidden; }
+
+    .step-panel { display: none; }
+
+    .step-panel.active {
+      display: block;
+      animation: panelIn 0.25s ease forwards;
+    }
+
+    .step-panel.exiting {
+      display: block;
+      animation: panelOut 0.2s ease forwards;
+    }
+
+    @keyframes panelIn  { from { opacity:0; transform: translateX(18px); } to { opacity:1; transform: none; } }
+    @keyframes panelOut { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(-18px); } }
+
+    .step-heading {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 16px;
+    }
+
+    /* ================================================================
+       BACK BUTTON
+       ================================================================ */
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text-2);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s;
+    }
+    .back-btn:hover { color: var(--text-1); }
+
+    /* ================================================================
+       STEP 1 — SERVICE CARDS
+       ================================================================ */
+    .services-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .svc-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .svc-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .svc-card:active { transform: scale(0.98); }
+
+    .svc-card.selected {
+      border-color: var(--accent);
+      border-width: 2px;
+      background: var(--accent-tint);
+    }
+
+    .svc-check {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .svc-card.selected .svc-check { opacity: 1; transform: scale(1); }
+    .svc-check svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 2.5; fill: none; }
+
+    .svc-name     { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 5px; padding-right: 22px; line-height: 1.3; }
+    .svc-duration { font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+    .svc-price    { font-size: 15px; font-weight: 600; color: var(--accent); }
+
+    /* ================================================================
+       STEP 2 — DATE STRIP
+       ================================================================ */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+
+    .date-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .date-strip::-webkit-scrollbar { display: none; }
+
+    .date-pill {
+      flex: 0 0 auto;
+      width: 62px;
+      padding: 10px 6px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      text-align: center;
+      cursor: pointer;
+      scroll-snap-align: start;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+      box-shadow: var(--shadow);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .date-pill:hover { border-color: var(--accent); }
+    .date-pill.selected { background: var(--accent); border-color: var(--accent); }
+
+    .date-day { font-size: 10px; font-weight: 500; display: block; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-2); margin-bottom: 3px; }
+    .date-num { font-size: 18px; font-weight: 600; display: block; color: var(--text-1); }
+
+    .date-pill.selected .date-day { color: rgba(255,255,255,0.82); }
+    .date-pill.selected .date-num { color: #fff; }
+
+    /* ================================================================
+       STEP 2 — TIME SLOTS
+       ================================================================ */
+    .time-section { margin-top: 22px; display: none; }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .time-slot {
+      padding: 11px 6px;
+      text-align: center;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-1);
+      transition: all 0.15s ease;
+      box-shadow: var(--shadow);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .time-slot:hover { border-color: var(--accent); color: var(--accent); }
+    .time-slot.selected { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+    .no-slots {
+      grid-column: 1 / -1;
+      padding: 20px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 14px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .avail-note {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+
+    /* ================================================================
+       CONTINUE BUTTON (step 2 → 3)
+       ================================================================ */
+    .continue-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 18px;
+      min-height: 48px;
+      display: none;
+    }
+
+    .continue-btn.show { display: block; }
+    .continue-btn:hover { background: var(--accent-dark); }
+
+    /* ================================================================
+       STEP 3 — BOOKING SUMMARY
+       ================================================================ */
+    .bkg-summary {
+      background: var(--accent-tint);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      margin-bottom: 24px;
+    }
+
+    .bkg-summary-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bkg-row { display: flex; gap: 10px; margin-bottom: 5px; font-size: 14px; }
+    .bkg-label { color: var(--text-2); font-weight: 500; min-width: 68px; flex-shrink: 0; }
+    .bkg-value { color: var(--text-1); font-weight: 500; }
+
+    /* ================================================================
+       STEP 3 — FORM
+       ================================================================ */
+    .form-group { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 6px;
+    }
+
+    .form-label .opt { color: var(--text-3); font-weight: 400; }
+
+    .form-input,
+    .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 16px; /* 16px = prevents iOS auto-zoom */
+      color: var(--text-1);
+      background: var(--surface);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      min-height: 48px;
+      -webkit-appearance: none;
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 84px;
+      line-height: 1.5;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-focus);
+    }
+
+    .form-input.err,
+    .form-textarea.err { border-color: #ef4444; }
+
+    .form-err-msg {
+      font-size: 12px;
+      color: #ef4444;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .form-err-msg.show { display: block; }
+
+    /* ================================================================
+       SUBMIT BUTTON
+       ================================================================ */
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+      min-height: 52px;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .submit-btn:hover:not(:disabled) { background: var(--accent-dark); }
+    .submit-btn:disabled { opacity: 0.68; cursor: not-allowed; }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+    }
+
+    .submit-btn.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ================================================================
+       SUCCESS STATE
+       ================================================================ */
+    #success-state { display: none; text-align: center; padding: 40px 16px; }
+    #success-state.show { display: block; animation: panelIn 0.3s ease; }
+
+    .success-svg {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 22px;
+    }
+
+    /* SVG stroke-draw animation */
+    .ck-circle {
+      stroke: var(--accent);
+      stroke-width: 2;
+      stroke-dasharray: 166;
+      stroke-dashoffset: 166;
+      fill: none;
+      animation: ck-draw 0.55s cubic-bezier(0.65,0,0.45,1) 0.1s forwards;
+    }
+
+    .ck-check {
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      fill: none;
+      animation: ck-draw 0.3s cubic-bezier(0.65,0,0.45,1) 0.7s forwards;
+    }
+
+    @keyframes ck-draw { 100% { stroke-dashoffset: 0; } }
+
+    .success-title   { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+    .success-msg     { font-size: 15px; color: var(--text-2); line-height: 1.65; margin-bottom: 28px; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+    .book-again-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 26px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-1);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      min-height: 48px;
+    }
+
+    .book-again-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ================================================================
+       FOOTER
+       ================================================================ */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .footer-biz { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; }
+    .footer-phone { color: var(--text-3); }
+    .footer-pow   { font-size: 12px; color: var(--text-3); }
+    .footer-pow a { color: var(--text-2); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+    .footer-pow a:hover { color: var(--accent); }
+
+    /* ================================================================
+       MOBILE OVERRIDES
+       ================================================================ */
+    @media (max-width: 480px) {
+      .services-grid { grid-template-columns: 1fr; }
+      .time-grid     { grid-template-columns: repeat(3, 1fr); }
+      main           { padding: 16px 0 100px; }
+      #site-header   { padding: 14px 0; }
+      .biz-name      { font-size: 20px; }
+    }
+
+    @media (max-width: 360px) {
+      .time-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ================================================================
+     HEADER
+     ================================================================ -->
+<header id="site-header">
+  <div class="container" id="header-inner"></div>
+</header>
+
+<!-- ================================================================
+     MAIN
+     ================================================================ -->
+<main>
+  <div class="container">
+
+    <!-- Progress indicator -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-steps">
+        <div class="progress-step active" id="ps-1">
+          <div class="step-circle" id="sc-1">1</div>
+          <div class="step-label">Service</div>
+        </div>
+        <div class="progress-step" id="ps-2">
+          <div class="step-circle" id="sc-2">2</div>
+          <div class="step-label">Date &amp; Time</div>
+        </div>
+        <div class="progress-step" id="ps-3">
+          <div class="step-circle" id="sc-3">3</div>
+          <div class="step-label">Your Details</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step panels -->
+    <div class="steps-outer" id="steps-outer">
+
+      <!-- ── STEP 1: Service selection ─────────────────────────── -->
+      <div class="step-panel active" id="step-1">
+        <p class="step-heading">What would you like to book?</p>
+        <div class="services-grid" id="services-grid"></div>
+      </div>
+
+      <!-- ── STEP 2: Date & time ───────────────────────────────── -->
+      <div class="step-panel" id="step-2">
+        <button class="back-btn" onclick="goToStep(1)">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to services
+        </button>
+
+        <p class="section-label">Select a date</p>
+        <div class="date-strip" id="date-strip"></div>
+
+        <div class="time-section" id="time-section">
+          <p class="section-label" id="time-label">Select a time</p>
+          <div class="time-grid" id="time-grid"></div>
+          <button class="continue-btn" id="continue-btn" onclick="goToStep(3)">Continue →</button>
+          <p class="avail-note" id="avail-note"></p>
+        </div>
+      </div>
+
+      <!-- ── STEP 3: Customer details ──────────────────────────── -->
+      <div class="step-panel" id="step-3">
+        <button class="back-btn" onclick="goToStep(2)">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to date &amp; time
+        </button>
+
+        <!-- Booking summary -->
+        <div class="bkg-summary" id="bkg-summary"></div>
+
+        <p class="step-heading">Almost done — just your details</p>
+
+        <form id="booking-form" novalidate onsubmit="handleSubmit(event)">
+          <div class="form-group">
+            <label class="form-label" for="f-name">Full Name</label>
+            <input class="form-input" type="text"  id="f-name"  placeholder="Jane Smith"         autocomplete="name" />
+            <div class="form-err-msg" id="e-name">Please enter your full name</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-email">Email Address</label>
+            <input class="form-input" type="email" id="f-email" placeholder="jane@email.com"     autocomplete="email" />
+            <div class="form-err-msg" id="e-email">Please enter a valid email address</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-phone">Phone Number</label>
+            <input class="form-input" type="tel"   id="f-phone" placeholder="071 234 5678"       autocomplete="tel" />
+            <div class="form-err-msg" id="e-phone">Please enter your phone number</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="f-note">Note <span class="opt">(optional)</span></label>
+            <textarea class="form-textarea" id="f-note" rows="3" placeholder="Any special requests or notes for your appointment?"></textarea>
+          </div>
+
+          <button type="submit" class="submit-btn" id="submit-btn">
+            <div class="spinner" id="spinner"></div>
+            <span id="submit-text">Confirm Booking Request →</span>
+          </button>
+        </form>
+      </div>
+
+    </div><!-- /steps-outer -->
+
+    <!-- ── SUCCESS STATE ──────────────────────────────────────── -->
+    <div id="success-state">
+      <svg class="success-svg" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+        <circle class="ck-circle" cx="26" cy="26" r="24"/>
+        <path   class="ck-check"  d="M14 26l8 8 16-16"/>
+      </svg>
+      <h2 class="success-title">Booking Request Sent!</h2>
+      <p  class="success-msg"   id="success-msg"></p>
+      <button class="book-again-btn" onclick="resetBooking()">Book Another Appointment</button>
+    </div>
+
+  </div>
+</main>
+
+<!-- ================================================================
+     FOOTER
+     ================================================================ -->
+<footer>
+  <div class="container">
+    <div class="footer-biz"  id="footer-biz"></div>
+    <div class="footer-pow"  id="footer-pow"></div>
+  </div>
+</footer>
+
+<!-- ================================================================
+     SCRIPT
+     ================================================================ -->
+<script>
+
+/* ----------------------------------------------------------------
+   CONFIG — change this object for each new client. Nothing else.
+   ---------------------------------------------------------------- */
+const CONFIG = {
+  // Business identity
+  businessName:    "True Reflection Nails",
+  businessId:      "true-reflection",          // lowercase-hyphenated, used in webhook payload
+  tagline:         "Professional nail care in Sandton",
+  logoUrl:         "",                          // URL to logo image — leave "" to show businessName as text
+  accentColor:     "#c084fc",                   // brand colour
+  accentColorDark: "#9333ea",                   // slightly darker, used for hover states
+
+  // Contact
+  ownerEmail: "owner@salon.co.za",              // booking notifications land here
+  phone:      "",                               // shown in footer if provided (e.g. "+27 71 234 5678")
+
+  // Services — add/remove as needed
+  services: [
+    { id: "gel-mani",    name: "Gel Manicure",       duration: 60,  price: "R280" },
+    { id: "acrylic-set", name: "Acrylic Full Set",   duration: 90,  price: "R420" },
+    { id: "gel-pedi",    name: "Gel Pedicure",       duration: 75,  price: "R320" },
+    { id: "nail-art",    name: "Nail Art (per nail)", duration: 30, price: "R80"  },
+  ],
+
+  // Availability
+  workingDays:          [1,2,3,4,5,6],  // 0=Sun … 6=Sat
+  workingHours:         { start: 8, end: 17 },  // 24-hr
+  slotIntervalMinutes:  30,
+  advanceBookingDays:   30,
+  sameDayBooking:       true,
+
+  // Webhook — paste your n8n URL here when ready; leave "" to test UI without a live endpoint
+  webhookUrl: "",
+
+  // Branding
+  poweredByText: "Powered by Streamline Automations",
+  poweredByUrl:  "https://streamline-automations.agency",
+};
+
+/* ----------------------------------------------------------------
+   STATE
+   ---------------------------------------------------------------- */
+let S = {
+  step:           1,
+  service:        null,   // selected service object
+  dateISO:        null,   // "2026-04-29"
+  dateObj:        null,   // Date object
+  dateLong:       "",     // "Tuesday, 29 April 2026"
+  time24:         null,   // "10:00"
+  time12:         null,   // "10:00 AM"
+};
+
+/* ----------------------------------------------------------------
+   UTILITY HELPERS
+   ---------------------------------------------------------------- */
+function hexRgba(hex, a) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+function pad2(n) { return String(n).padStart(2,'0'); }
+
+function fmt12(h, m) {
+  return `${h % 12 || 12}:${pad2(m)} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+function fmt24(h, m) { return `${pad2(h)}:${pad2(m)}`; }
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function longDate(d) {
+  const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function shortDay(d) {
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+}
+
+function firstName(name) { return name.trim().split(' ')[0]; }
+
+/* ----------------------------------------------------------------
+   BOOT — inject CSS vars, set title/favicon, render static parts
+   ---------------------------------------------------------------- */
+function boot() {
+  // CSS variables from CONFIG
+  const r = document.documentElement;
+  r.style.setProperty('--accent',       CONFIG.accentColor);
+  r.style.setProperty('--accent-dark',  CONFIG.accentColorDark);
+  r.style.setProperty('--accent-tint',  hexRgba(CONFIG.accentColor, 0.07));
+  r.style.setProperty('--accent-focus', hexRgba(CONFIG.accentColor, 0.26));
+
+  // Page title
+  document.title = `${CONFIG.businessName} — Book Online`;
+
+  // Favicon: filled circle in accent colour
+  document.getElementById('favicon').href =
+    `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>` +
+    `<circle cx='50' cy='50' r='50' fill='${encodeURIComponent(CONFIG.accentColor)}'/>` +
+    `</svg>`;
+
+  // Header
+  const h = document.getElementById('header-inner');
+  if (CONFIG.logoUrl) {
+    h.innerHTML = `<img class="logo-img" src="${CONFIG.logoUrl}" alt="${CONFIG.businessName}" />`;
+  } else {
+    h.innerHTML = `<div class="biz-name">${CONFIG.businessName}</div>`;
+  }
+  if (CONFIG.tagline) {
+    h.innerHTML += `<div class="biz-tagline">${CONFIG.tagline}</div>`;
+  }
+
+  // Footer
+  const biz = document.getElementById('footer-biz');
+  biz.innerHTML = CONFIG.businessName + (CONFIG.phone ? ` · <span class="footer-phone">${CONFIG.phone}</span>` : '');
+
+  document.getElementById('footer-pow').innerHTML =
+    `<a href="${CONFIG.poweredByUrl}" target="_blank" rel="noopener noreferrer">${CONFIG.poweredByText} ↗</a>`;
+
+  // Services
+  renderServices();
+
+  // Initial progress state
+  setProgress(1);
+}
+
+/* ----------------------------------------------------------------
+   PROGRESS BAR
+   ---------------------------------------------------------------- */
+const CHECK_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+function setProgress(step) {
+  for (let i = 1; i <= 3; i++) {
+    const ps = document.getElementById(`ps-${i}`);
+    const sc = document.getElementById(`sc-${i}`);
+    ps.className = 'progress-step' + (i < step ? ' completed' : i === step ? ' active' : '');
+    sc.innerHTML  = i < step ? CHECK_SVG : String(i);
+  }
+}
+
+/* ----------------------------------------------------------------
+   STEP TRANSITIONS
+   ---------------------------------------------------------------- */
+function goToStep(target) {
+  if (target === S.step) return;
+
+  const from = document.getElementById(`step-${S.step}`);
+  const to   = document.getElementById(`step-${target}`);
+
+  from.classList.add('exiting');
+
+  setTimeout(() => {
+    from.classList.remove('active', 'exiting');
+
+    // Render destination panel content
+    if (target === 2) renderStep2();
+    if (target === 3) renderStep3();
+
+    to.classList.add('active');
+    S.step = target;
+    setProgress(target);
+
+    // Scroll to top of booking area
+    const top = document.getElementById('progress-wrap').getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, 200);
+}
+
+/* ----------------------------------------------------------------
+   STEP 1 — Services
+   ---------------------------------------------------------------- */
+function renderServices() {
+  document.getElementById('services-grid').innerHTML = CONFIG.services.map(s => `
+    <div class="svc-card" id="svc-${s.id}" onclick="pickService('${s.id}')">
+      <div class="svc-check">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="svc-name">${s.name}</div>
+      <div class="svc-duration">${s.duration} min</div>
+      <div class="svc-price">${s.price}</div>
+    </div>
+  `).join('');
+}
+
+function pickService(id) {
+  const prev = S.service;
+  S.service = CONFIG.services.find(s => s.id === id);
+
+  // If service changed, clear date/time so duration-invalid slots don't persist
+  if (prev && prev.id !== id) {
+    S.dateISO = null; S.dateObj = null; S.dateLong = '';
+    S.time24  = null; S.time12  = null;
+  }
+
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`svc-${id}`).classList.add('selected');
+
+  setTimeout(() => goToStep(2), 280);
+}
+
+/* ----------------------------------------------------------------
+   STEP 2 — Date strip
+   ---------------------------------------------------------------- */
+function renderStep2() {
+  buildDateStrip();
+
+  if (S.dateISO) {
+    buildTimeSlots();
+    document.getElementById('time-section').style.display = 'block';
+    document.getElementById('continue-btn').classList.toggle('show', !!S.time24);
+  } else {
+    document.getElementById('time-section').style.display = 'none';
+    document.getElementById('continue-btn').classList.remove('show');
+  }
+}
+
+function buildDateStrip() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const pills = [];
+  for (let i = 0; i <= CONFIG.advanceBookingDays; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (!CONFIG.workingDays.includes(d.getDay())) continue;
+    if (i === 0 && !CONFIG.sameDayBooking)          continue;
+    pills.push(d);
+  }
+
+  const strip = document.getElementById('date-strip');
+  strip.innerHTML = pills.map(d => {
+    const iso = isoDate(d);
+    const sel = iso === S.dateISO ? ' selected' : '';
+    return `
+      <div class="date-pill${sel}" id="dp-${iso}" onclick="pickDate('${iso}',${d.getTime()})">
+        <span class="date-day">${shortDay(d)}</span>
+        <span class="date-num">${d.getDate()}</span>
+      </div>`;
+  }).join('');
+}
+
+function pickDate(iso, ts) {
+  S.dateISO  = iso;
+  S.dateObj  = new Date(ts);
+  S.dateLong = longDate(S.dateObj);
+
+  // Clear time selection when date changes
+  S.time24 = null;
+  S.time12 = null;
+  document.getElementById('continue-btn').classList.remove('show');
+
+  document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('selected'));
+  const pill = document.getElementById(`dp-${iso}`);
+  if (pill) pill.classList.add('selected');
+
+  document.getElementById('time-section').style.display = 'block';
+  buildTimeSlots();
+}
+
+/* ----------------------------------------------------------------
+   STEP 2 — Time slots
+   ---------------------------------------------------------------- */
+function buildTimeSlots() {
+  const { start, end } = CONFIG.workingHours;
+  const interval = CONFIG.slotIntervalMinutes;
+  const duration = S.service ? S.service.duration : 60;
+
+  const slots = [];
+  for (let h = start; h < end; h++) {
+    for (let m = 0; m < 60; m += interval) {
+      const endMin = h * 60 + m + duration;
+      // Only include if the appointment finishes by working hours end
+      if (Math.floor(endMin / 60) < end || (Math.floor(endMin / 60) === end && endMin % 60 === 0)) {
+        slots.push({ h, m });
+      }
+    }
+  }
+
+  // Label e.g. "Available times — Tue, 29 Apr"
+  const shortLabel = S.dateObj
+    ? S.dateObj.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' })
+    : '';
+  document.getElementById('time-label').textContent = `Available times${shortLabel ? ' — ' + shortLabel : ''}`;
+
+  const grid = document.getElementById('time-grid');
+  if (slots.length === 0) {
+    grid.innerHTML = `<div class="no-slots">No times available for this service on this day.</div>`;
+  } else {
+    grid.innerHTML = slots.map(({ h, m }) => {
+      const t24  = fmt24(h, m);
+      const t12  = fmt12(h, m);
+      const sel  = t24 === S.time24 ? ' selected' : '';
+      return `<div class="time-slot${sel}" id="ts-${t24}" onclick="pickTime('${t24}','${t12}')">${t12}</div>`;
+    }).join('');
+  }
+
+  document.getElementById('avail-note').textContent =
+    `Booking requests are confirmed by ${CONFIG.businessName} — you'll receive a confirmation shortly.`;
+}
+
+function pickTime(t24, t12) {
+  S.time24 = t24;
+  S.time12 = t12;
+
+  document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById(`ts-${t24}`);
+  if (el) el.classList.add('selected');
+
+  document.getElementById('continue-btn').classList.add('show');
+}
+
+/* ----------------------------------------------------------------
+   STEP 3 — Summary card
+   ---------------------------------------------------------------- */
+function renderStep3() {
+  const svc = S.service;
+  document.getElementById('bkg-summary').innerHTML = `
+    <div class="bkg-summary-title">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Your Booking
+    </div>
+    <div class="bkg-row"><span class="bkg-label">Service</span> <span class="bkg-value">${svc.name}</span></div>
+    <div class="bkg-row"><span class="bkg-label">Date</span>    <span class="bkg-value">${S.dateLong}</span></div>
+    <div class="bkg-row"><span class="bkg-label">Time</span>    <span class="bkg-value">${S.time12}</span></div>
+    <div class="bkg-row"><span class="bkg-label">Duration</span><span class="bkg-value">${svc.duration} min</span></div>
+    <div class="bkg-row"><span class="bkg-label">Price</span>   <span class="bkg-value">${svc.price}</span></div>
+  `;
+}
+
+/* ----------------------------------------------------------------
+   FORM VALIDATION
+   ---------------------------------------------------------------- */
+function validate() {
+  let ok = true;
+  let first = null;
+
+  function check(inputId, errId, test) {
+    const el  = document.getElementById(inputId);
+    const err = document.getElementById(errId);
+    const bad = !test(el.value.trim());
+    el.classList.toggle('err', bad);
+    err.classList.toggle('show', bad);
+    if (bad && !first) first = el;
+    if (bad) ok = false;
+  }
+
+  check('f-name',  'e-name',  v => v.length > 0);
+  check('f-email', 'e-email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+  check('f-phone', 'e-phone', v => v.replace(/\D/g,'').length >= 7);
+
+  if (first) { first.scrollIntoView({ behavior:'smooth', block:'center' }); first.focus(); }
+  return ok;
+}
+
+/* ----------------------------------------------------------------
+   FORM SUBMISSION
+   ---------------------------------------------------------------- */
+async function handleSubmit(e) {
+  e.preventDefault();
+  if (!validate()) return;
+
+  const btn  = document.getElementById('submit-btn');
+  const txt  = document.getElementById('submit-text');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  txt.textContent = 'Sending…';
+
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const note  = document.getElementById('f-note').value.trim();
+
+  const payload = {
+    businessId:   CONFIG.businessId,
+    businessName: CONFIG.businessName,
+    ownerEmail:   CONFIG.ownerEmail,
+    customer:     { name, email, phone, note },
+    booking: {
+      service:       S.service.name,
+      serviceId:     S.service.id,
+      duration:      S.service.duration,
+      price:         S.service.price,
+      date:          S.dateISO,
+      time:          S.time24,
+      dateFormatted: S.dateLong,
+      timeFormatted: S.time12,
+    },
+    submittedAt: new Date().toISOString(),
+  };
+
+  if (CONFIG.webhookUrl) {
+    try {
+      await fetch(CONFIG.webhookUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+    } catch (err) {
+      // Never surface backend failures to user — log only
+      console.error('[booking] Webhook error:', err);
+    }
+  }
+
+  showSuccess(name);
+}
+
+/* ----------------------------------------------------------------
+   SUCCESS STATE
+   ---------------------------------------------------------------- */
+function showSuccess(customerName) {
+  document.getElementById('steps-outer').style.display  = 'none';
+  document.getElementById('progress-wrap').style.display = 'none';
+
+  document.getElementById('success-msg').innerHTML =
+    `Thanks ${firstName(customerName)}! We've received your request for ` +
+    `<strong>${S.service.name}</strong> on ${S.dateLong} at ${S.time12}.<br><br>` +
+    `${CONFIG.businessName} will confirm your appointment shortly.`;
+
+  // Re-trigger the SVG animation by replacing the node
+  const old = document.querySelector('.success-svg');
+  const fresh = old.cloneNode(true);
+  old.replaceWith(fresh);
+
+  document.getElementById('success-state').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ----------------------------------------------------------------
+   RESET — back to step 1
+   ---------------------------------------------------------------- */
+function resetBooking() {
+  S = { step:1, service:null, dateISO:null, dateObj:null, dateLong:'', time24:null, time12:null };
+
+  // Reset form
+  document.getElementById('booking-form').reset();
+  document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.classList.remove('err'));
+  document.querySelectorAll('.form-err-msg').forEach(el => el.classList.remove('show'));
+
+  // Restore submit button
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  document.getElementById('submit-text').textContent = 'Confirm Booking Request →';
+
+  // Restore service card visual state
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
+
+  // Hide success, show booking panels
+  document.getElementById('success-state').classList.remove('show');
+  document.getElementById('steps-outer').style.display   = 'block';
+  document.getElementById('progress-wrap').style.display = 'block';
+
+  // Activate step 1
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active','exiting'));
+  document.getElementById('step-1').classList.add('active');
+
+  setProgress(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ----------------------------------------------------------------
+   GO
+   ---------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', boot);
+
+</script>
+</body>
+</html>
