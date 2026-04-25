@@ -1,0 +1,205 @@
+{
+  "name": "Streamline Bookings — Notification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e7d5c3b1-a9f7-4e2d-8b6a-0f1e3c5d7a9b",
+      "name": "Booking Received",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 340],
+      "webhookId": "streamline-booking-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'received' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "f8e6d4c2-b0a8-5f3e-9c7b-1a2f4e6d8c0a",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 340],
+      "notes": "Responds immediately so the booking page doesn't hang. Emails send after this."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.ownerEmail }}",
+        "subject": "=New Booking Request — {{ $json.body.customer.name }}",
+        "emailType": "html",
+        "message": "=`<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:24px}.container{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}.header{background:#7B3FE4;padding:24px 28px}.header h1{color:#fff;font-size:20px;font-weight:600;margin:0}.header p{color:rgba(255,255,255,.75);font-size:14px;margin:4px 0 0}.body{padding:28px}.label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:4px}.value{font-size:15px;color:#111827;font-weight:500;margin-bottom:16px}.booking-card{background:#f8f5ff;border-left:3px solid #7B3FE4;border-radius:0 8px 8px 0;padding:16px 18px;margin-bottom:20px}.booking-card .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e9d8fd;font-size:14px}.booking-card .row:last-child{border-bottom:none}.booking-card .key{color:#6b7280}.booking-card .val{font-weight:600;color:#111827}.note-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;font-size:14px;color:#374151;font-style:italic;margin-bottom:20px}.footer{padding:16px 28px;background:#f9fafb;border-top:1px solid #f3f4f6;font-size:12px;color:#9ca3af}</style></head><body><div class='container'><div class='header'><h1>New Booking Request 📅</h1><p>${$json.body.businessName}</p></div><div class='body'><div class='label'>Customer</div><div class='value'>${$json.body.customer.name}</div><div class='label'>Contact</div><div class='value'>${$json.body.customer.email} · ${$json.body.customer.phone}</div><div class='booking-card'><div class='row'><span class='key'>Service</span><span class='val'>${$json.body.booking.service}</span></div><div class='row'><span class='key'>Date</span><span class='val'>${$json.body.booking.dateFormatted}</span></div><div class='row'><span class='key'>Time</span><span class='val'>${$json.body.booking.timeFormatted}</span></div><div class='row'><span class='key'>Duration</span><span class='val'>${$json.body.booking.duration} min</span></div><div class='row'><span class='key'>Price</span><span class='val'>${$json.body.booking.price}</span></div></div>${$json.body.customer.note ? '<div class=\\'label\\'>Customer Note</div><div class=\\'note-box\\'>&ldquo;' + $json.body.customer.note + '&rdquo;</div>' : ''}<p style='font-size:14px;color:#374151;line-height:1.6'>Please contact <strong>${$json.body.customer.name}</strong> to confirm this booking. Reply to their email or WhatsApp them directly.</p></div><div class='footer'>Sent by Streamline Automations · Your booking system is running 24/7</div></div></body></html>`",
+        "options": {}
+      },
+      "id": "a1b3c5d7-e9f1-4a2b-8c6d-0e2f4a6b8c0d",
+      "name": "Owner Notification Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [680, 340],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Connect your Gmail credential. Sends to the owner's email from the booking payload."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.customer.email }}",
+        "subject": "=Booking Request Received — {{ $json.body.businessName }}",
+        "emailType": "html",
+        "message": "=`<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:24px}.container{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}.header{background:#111827;padding:24px 28px;text-align:center}.header h1{color:#fff;font-size:20px;font-weight:600;margin:0}.header p{color:rgba(255,255,255,.6);font-size:14px;margin:6px 0 0}.body{padding:28px}.greeting{font-size:16px;color:#111827;font-weight:500;margin-bottom:8px}.subtext{font-size:14px;color:#6b7280;line-height:1.6;margin-bottom:24px}.booking-card{background:#f9fafb;border-radius:10px;padding:18px;margin-bottom:24px}.booking-card .title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:12px}.booking-card .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:14px}.booking-card .row:last-child{border-bottom:none}.booking-card .key{color:#6b7280}.booking-card .val{font-weight:600;color:#111827}.notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:13px;color:#92400e;margin-bottom:20px;line-height:1.5}.footer{padding:16px 28px;background:#f9fafb;border-top:1px solid #f3f4f6;font-size:12px;color:#9ca3af;text-align:center}</style></head><body><div class='container'><div class='header'><h1>${$json.body.businessName}</h1><p>Booking Request Received</p></div><div class='body'><div class='greeting'>Hi ${$json.body.customer.name.split(' ')[0]} 👋</div><div class='subtext'>Thanks for booking with ${$json.body.businessName}! We've received your request and will confirm your appointment shortly.</div><div class='booking-card'><div class='title'>Your Booking Details</div><div class='row'><span class='key'>Service</span><span class='val'>${$json.body.booking.service}</span></div><div class='row'><span class='key'>Date</span><span class='val'>${$json.body.booking.dateFormatted}</span></div><div class='row'><span class='key'>Time</span><span class='val'>${$json.body.booking.timeFormatted}</span></div><div class='row'><span class='key'>Duration</span><span class='val'>${$json.body.booking.duration} min</span></div><div class='row'><span class='key'>Price</span><span class='val'>${$json.body.booking.price}</span></div></div><div class='notice'>⏳ <strong>Pending confirmation</strong> — ${$json.body.businessName} will contact you to confirm this booking. Please wait for their message before assuming it's locked in.</div><p style='font-size:14px;color:#6b7280;line-height:1.6'>Questions? Reply to this email or contact ${$json.body.businessName} directly.</p></div><div class='footer'>Booking powered by Streamline Automations</div></div></body></html>`",
+        "options": {
+          "replyTo": "={{ $json.body.ownerEmail }}"
+        }
+      },
+      "id": "b2c4d6e8-f0a2-5b3c-9d7e-1f3a5b7c9d1e",
+      "name": "Customer Confirmation Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [900, 340],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Reply-To is set to ownerEmail so customer replies land in the salon owner's inbox, not yours."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.body.submittedAt }}",
+            "Business": "={{ $json.body.businessName }}",
+            "Business ID": "={{ $json.body.businessId }}",
+            "Customer Name": "={{ $json.body.customer.name }}",
+            "Customer Email": "={{ $json.body.customer.email }}",
+            "Customer Phone": "={{ $json.body.customer.phone }}",
+            "Service": "={{ $json.body.booking.service }}",
+            "Date": "={{ $json.body.booking.dateFormatted }}",
+            "Time": "={{ $json.body.booking.timeFormatted }}",
+            "Duration (min)": "={{ $json.body.booking.duration }}",
+            "Price": "={{ $json.body.booking.price }}",
+            "Note": "={{ $json.body.customer.note }}",
+            "Status": "Pending"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Timestamp",      "displayName": "Timestamp",      "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Business",       "displayName": "Business",       "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Business ID",    "displayName": "Business ID",    "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Customer Name",  "displayName": "Customer Name",  "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Customer Email", "displayName": "Customer Email", "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Customer Phone", "displayName": "Customer Phone", "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Service",        "displayName": "Service",        "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Date",           "displayName": "Date",           "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Time",           "displayName": "Time",           "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Duration (min)", "displayName": "Duration (min)", "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Price",          "displayName": "Price",          "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Note",           "displayName": "Note",           "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true },
+            { "id": "Status",         "displayName": "Status",         "type": "string", "required": false, "defaultMatch": false, "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3d5e7f9-a1b3-6c4d-0e8f-2a4b6c8d0e2f",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1120, 340],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_GSHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Create your sheet first, copy the ID from the URL, paste it above. Tab must be named Sheet1 or update sheetName."
+    }
+  ],
+  "connections": {
+    "Booking Received": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond 200 OK": {
+      "main": [
+        [
+          {
+            "node": "Owner Notification Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner Notification Email": {
+      "main": [
+        [
+          {
+            "node": "Customer Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "c8a1e5f2-9b3d-4e7a-0f6c-2d4b8a0c6e1f",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "streamline-automations"
+  },
+  "tags": [
+    { "name": "bookings", "createdAt": "2026-04-25" }
+  ],
+  "pinData": {}
+}
