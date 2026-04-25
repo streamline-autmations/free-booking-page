@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin</title>
+  <link rel="icon" id="favicon" href="" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ================================================================
+       CSS VARS — same pattern as index.html, injected by JS from CONFIG
+       ================================================================ */
+    :root {
+      --accent:       #c084fc;
+      --accent-dark:  #9333ea;
+      --accent-tint:  rgba(192,132,252,0.08);
+      --bg:           #f3f4f6;
+      --surface:      #ffffff;
+      --border:       #e5e7eb;
+      --text-1:       #111827;
+      --text-2:       #6b7280;
+      --text-3:       #9ca3af;
+      --radius:       12px;
+      --radius-sm:    8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      line-height: 1.6;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* ================================================================
+       PIN SCREEN
+       ================================================================ */
+    #pin-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--bg);
+    }
+
+    .pin-wrap { text-align: center; width: 100%; max-width: 300px; }
+
+    .pin-biz {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 3px;
+    }
+
+    .pin-portal {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 36px;
+    }
+
+    .pin-prompt {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 18px;
+    }
+
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+
+    .pin-err {
+      font-size: 13px;
+      color: #ef4444;
+      height: 20px;
+      margin-bottom: 22px;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-7px); }
+      40%,80%  { transform: translateX(7px); }
+    }
+    .pin-dots.shake { animation: shake 0.45s ease; }
+
+    /* Numpad */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 270px;
+      margin: 0 auto;
+    }
+
+    .num-btn {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text-1);
+      height: 66px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .num-btn:hover  { background: #f9fafb; }
+    .num-btn:active { transform: scale(0.93); background: var(--accent-tint); }
+    .num-btn.del    { font-size: 18px; color: var(--text-2); }
+    .num-btn.blank  { visibility: hidden; cursor: default; }
+
+    /* ================================================================
+       DASHBOARD LAYOUT
+       ================================================================ */
+    #dashboard { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .admin-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 54px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .admin-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+
+    .hdr-btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      transition: color 0.2s;
+      min-height: 44px;
+    }
+
+    .hdr-btn:hover       { color: var(--accent); }
+    .hdr-btn.logout:hover { color: #ef4444; }
+
+    /* TABS */
+    .admin-tabs {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 8px;
+      position: sticky;
+      top: 54px;
+      z-index: 99;
+    }
+
+    .tab-btn {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-2);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      padding: 14px 14px 12px;
+      transition: color 0.2s, border-color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text-1); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* BODY */
+    .admin-body {
+      flex: 1;
+      padding: 20px 16px 100px;
+      max-width: 640px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ================================================================
+       SHARED COMPONENTS
+       ================================================================ */
+    .section-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+      min-height: 38px;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary:hover { background: var(--accent-dark); }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text-1);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      cursor: pointer;
+      min-height: 38px;
+      transition: border-color 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--text-2); }
+
+    .btn-danger {
+      background: none;
+      color: #ef4444;
+      border: 1.5px solid #fecaca;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      cursor: pointer;
+      min-height: 38px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-danger:hover { background: #fef2f2; border-color: #ef4444; }
+
+    .empty-state {
+      padding: 28px 20px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 14px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    /* ================================================================
+       SERVICES TAB
+       ================================================================ */
+    /* Add form (above list) */
+    .add-form-wrap {
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .add-form-wrap.open { display: block; }
+
+    .add-form-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .add-form-title { font-size: 13px; font-weight: 600; color: var(--text-1); }
+
+    /* Inline form grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 110px 130px;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .fld label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 5px;
+    }
+
+    .fld input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--text-1);
+      background: var(--surface);
+      outline: none;
+      min-height: 42px;
+      transition: border-color 0.2s;
+    }
+    .fld input:focus { border-color: var(--accent); }
+
+    .price-row { display: flex; align-items: center; gap: 5px; }
+    .price-pfx { font-weight: 600; color: var(--text-2); font-size: 15px; }
+
+    .form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Service list */
+    .svc-list {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .svc-row { border-bottom: 1px solid var(--border); }
+    .svc-row:last-child { border-bottom: none; }
+
+    .svc-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      gap: 12px;
+    }
+
+    .svc-row-name { font-size: 15px; font-weight: 600; }
+    .svc-row-meta { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+
+    .svc-row-btns { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .edit-btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-tint);
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      min-height: 32px;
+      transition: background 0.2s;
+    }
+    .edit-btn:hover { background: rgba(192,132,252,0.15); }
+
+    .del-btn {
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 8px;
+      min-height: 32px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .del-btn:hover { color: #ef4444; background: #fef2f2; }
+
+    /* Inline edit */
+    .inline-edit {
+      background: #f9fafb;
+      border-top: 1px solid var(--border);
+      padding: 14px 16px;
+      display: none;
+    }
+    .inline-edit.open { display: block; }
+
+    /* ================================================================
+       HOURS TAB
+       ================================================================ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+    }
+
+    .day-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .day-toggle {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 40px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .day-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .hours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .hours-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 5px;
+    }
+
+    .hours-sel {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--text-1);
+      background: var(--surface);
+      outline: none;
+      min-height: 44px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .hours-sel:focus { border-color: var(--accent); }
+
+    .save-hours-btn {
+      width: 100%;
+      padding: 15px;
+      font-size: 15px;
+      border-radius: var(--radius);
+      min-height: 52px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .save-hours-btn:hover { background: var(--accent-dark); }
+
+    .hint { font-size: 12px; color: var(--text-3); margin-top: 10px; line-height: 1.5; }
+
+    /* ================================================================
+       BLOCK TIME TAB
+       ================================================================ */
+    .block-forms {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .block-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .block-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 12px;
+    }
+
+    .block-input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--text-1);
+      background: var(--surface);
+      outline: none;
+      min-height: 42px;
+      margin-bottom: 8px;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .block-input:focus { border-color: var(--accent); }
+
+    .block-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 42px;
+      transition: background 0.2s;
+      margin-top: 2px;
+    }
+    .block-btn:hover { background: var(--accent-dark); }
+
+    .block-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .block-item-date   { font-size: 14px; font-weight: 600; }
+    .block-item-reason { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+    .remove-btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: #ef4444;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+      min-height: 28px;
+      white-space: nowrap;
+    }
+    .remove-btn:hover { background: #fef2f2; }
+
+    /* ================================================================
+       TOAST
+       ================================================================ */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1f2937;
+      color: #fff;
+      padding: 11px 22px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 9999;
+      transition: transform 0.28s ease, opacity 0.28s ease;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show    { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { background: #059669; }
+    .toast.error   { background: #dc2626; }
+
+    /* ================================================================
+       RESPONSIVE
+       ================================================================ */
+    @media (max-width: 520px) {
+      .form-grid    { grid-template-columns: 1fr; }
+      .block-forms  { grid-template-columns: 1fr; }
+      .hours-grid   { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ================================================================
+     PIN SCREEN
+     ================================================================ -->
+<div id="pin-screen">
+  <div class="pin-wrap">
+    <div class="pin-biz"    id="pin-biz-name"></div>
+    <div class="pin-portal">Owner Portal</div>
+    <div class="pin-prompt">Enter your PIN</div>
+    <div class="pin-dots" id="pin-dots">
+      <span class="pin-dot" id="dot-0"></span>
+      <span class="pin-dot" id="dot-1"></span>
+      <span class="pin-dot" id="dot-2"></span>
+      <span class="pin-dot" id="dot-3"></span>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="numpad">
+      <button class="num-btn" onclick="appendPin('1')">1</button>
+      <button class="num-btn" onclick="appendPin('2')">2</button>
+      <button class="num-btn" onclick="appendPin('3')">3</button>
+      <button class="num-btn" onclick="appendPin('4')">4</button>
+      <button class="num-btn" onclick="appendPin('5')">5</button>
+      <button class="num-btn" onclick="appendPin('6')">6</button>
+      <button class="num-btn" onclick="appendPin('7')">7</button>
+      <button class="num-btn" onclick="appendPin('8')">8</button>
+      <button class="num-btn" onclick="appendPin('9')">9</button>
+      <button class="num-btn blank" disabled></button>
+      <button class="num-btn" onclick="appendPin('0')">0</button>
+      <button class="num-btn del"   onclick="deletePin()">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     DASHBOARD
+     ================================================================ -->
+<div id="dashboard" style="display:none">
+
+  <header class="admin-header">
+    <a class="hdr-btn" href="/">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Booking page
+    </a>
+    <div class="admin-title" id="admin-title"></div>
+    <button class="hdr-btn logout" onclick="logout()">Log out</button>
+  </header>
+
+  <nav class="admin-tabs">
+    <button class="tab-btn active" onclick="switchTab('services', this)">Services</button>
+    <button class="tab-btn"        onclick="switchTab('hours', this)">Hours</button>
+    <button class="tab-btn"        onclick="switchTab('blocked', this)">Block Time</button>
+  </nav>
+
+  <div class="admin-body">
+
+    <!-- ── SERVICES ────────────────────────────────────────────── -->
+    <div id="tab-services" class="tab-panel active">
+
+      <!-- Add service form -->
+      <div class="add-form-wrap" id="add-form-wrap">
+        <div class="add-form-header">
+          <span class="add-form-title">New Service</span>
+          <button class="btn-secondary" onclick="closeAddForm()">Cancel</button>
+        </div>
+        <div class="form-grid">
+          <div class="fld">
+            <label>Service Name</label>
+            <input type="text"   id="add-name"     placeholder="e.g. Gel Manicure" />
+          </div>
+          <div class="fld">
+            <label>Minutes</label>
+            <input type="number" id="add-duration"  placeholder="60" min="5" max="480" />
+          </div>
+          <div class="fld">
+            <label>Price</label>
+            <div class="price-row">
+              <span class="price-pfx">R</span>
+              <input type="text" id="add-price" placeholder="280" style="flex:1" />
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="saveNewService()">Add Service</button>
+        </div>
+      </div>
+
+      <!-- List header -->
+      <div class="section-row">
+        <span class="section-label">My Services</span>
+        <button class="btn-primary" onclick="openAddForm()">+ Add Service</button>
+      </div>
+
+      <div id="svc-list"><!-- rendered by JS --></div>
+    </div>
+
+    <!-- ── HOURS ───────────────────────────────────────────────── -->
+    <div id="tab-hours" class="tab-panel">
+
+      <div class="card">
+        <div class="card-title">Working Days</div>
+        <div class="day-toggles" id="day-toggles"><!-- rendered by JS --></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Working Hours</div>
+        <div class="hours-grid">
+          <div class="hours-field">
+            <label>Opens at</label>
+            <select class="hours-sel" id="hours-start"><!-- rendered by JS --></select>
+          </div>
+          <div class="hours-field">
+            <label>Closes at</label>
+            <select class="hours-sel" id="hours-end"><!-- rendered by JS --></select>
+          </div>
+        </div>
+        <p class="hint">Slots show between these hours based on each service's duration.</p>
+      </div>
+
+      <button class="save-hours-btn" onclick="saveHoursAction()">Save Hours</button>
+
+    </div>
+
+    <!-- ── BLOCK TIME ──────────────────────────────────────────── -->
+    <div id="tab-blocked" class="tab-panel">
+
+      <div class="block-forms">
+
+        <div class="block-card">
+          <div class="block-card-title">📅 Block a full day</div>
+          <input class="block-input" type="date"  id="bd-date"   />
+          <input class="block-input" type="text"  id="bd-reason" placeholder="Reason (optional)" />
+          <button class="block-btn" onclick="blockFullDay()">Block Full Day</button>
+        </div>
+
+        <div class="block-card">
+          <div class="block-card-title">🕐 Block a time slot</div>
+          <input  class="block-input" type="date" id="bs-date"   oninput="populateSlotTimes()" />
+          <select class="block-input" id="bs-time">
+            <option value="">— Select date first —</option>
+          </select>
+          <input class="block-input" type="text"  id="bs-reason" placeholder="Reason (optional)" />
+          <button class="block-btn" onclick="blockSlot()">Block This Slot</button>
+        </div>
+
+      </div>
+
+      <div class="section-row">
+        <span class="section-label">Blocked Dates &amp; Slots</span>
+      </div>
+      <div id="blocked-list"><!-- rendered by JS --></div>
+
+    </div>
+
+  </div><!-- /admin-body -->
+</div><!-- /dashboard -->
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- ================================================================
+     SCRIPT
+     ================================================================ -->
+<script>
+
+/* ----------------------------------------------------------------
+   CONFIG — keep in sync with index.html
+   ---------------------------------------------------------------- */
+const CONFIG = {
+  businessName:    "True Reflection Nails",
+  businessId:      "true-reflection",
+  tagline:         "Professional nail care in Sandton",
+  logoUrl:         "",
+  accentColor:     "#c084fc",
+  accentColorDark: "#9333ea",
+  ownerEmail:      "owner@salon.co.za",
+  phone:           "",
+  services: [
+    { id: "gel-mani",    name: "Gel Manicure",        duration: 60,  price: "R280" },
+    { id: "acrylic-set", name: "Acrylic Full Set",    duration: 90,  price: "R420" },
+    { id: "gel-pedi",    name: "Gel Pedicure",        duration: 75,  price: "R320" },
+    { id: "nail-art",    name: "Nail Art (per nail)", duration: 30,  price: "R80"  },
+  ],
+  workingDays:         [1,2,3,4,5,6],
+  workingHours:        { start: 8, end: 17 },
+  slotIntervalMinutes: 30,
+  advanceBookingDays:  30,
+  sameDayBooking:      true,
+  webhookUrl:          "",
+  poweredByText:       "Powered by Streamline Automations",
+  poweredByUrl:        "https://streamline-automations.agency",
+  adminPin:            "1234",
+};
+
+/* ----------------------------------------------------------------
+   LOCALSTORAGE HELPERS
+   ---------------------------------------------------------------- */
+const PFX = () => `sa_booking_${CONFIG.businessId}`;
+
+function ls(key)        { try { return localStorage.getItem(`${PFX()}_${key}`); } catch(e) { return null; } }
+function lsSave(key, v) { try { localStorage.setItem(`${PFX()}_${key}`, JSON.stringify(v)); } catch(e) {} }
+function lsJSON(key, fb) {
+  const raw = ls(key);
+  try { return raw ? JSON.parse(raw) : fb; } catch(e) { return fb; }
+}
+
+function getServices()    { return lsJSON('services', [...CONFIG.services]); }
+function putServices(arr) { lsSave('services', arr); }
+
+function getHours() {
+  return lsJSON('hours', {
+    workingDays:  CONFIG.workingDays,
+    workingHours: CONFIG.workingHours,
+  });
+}
+function putHours(h) { lsSave('hours', h); }
+
+function getBlocked() {
+  const all = lsJSON('blocked', []);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const fwd = all.filter(b => new Date(b.date + 'T00:00:00') >= today);
+  if (fwd.length !== all.length) lsSave('blocked', fwd);
+  return fwd;
+}
+function putBlocked(arr) { lsSave('blocked', arr); }
+
+/* ----------------------------------------------------------------
+   CSS VAR INJECTION + TITLE
+   ---------------------------------------------------------------- */
+function injectStyle() {
+  function hr(hex, a) {
+    const n = parseInt(hex.replace('#',''), 16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+  const r = document.documentElement;
+  r.style.setProperty('--accent',       CONFIG.accentColor);
+  r.style.setProperty('--accent-dark',  CONFIG.accentColorDark);
+  r.style.setProperty('--accent-tint',  hr(CONFIG.accentColor, 0.08));
+  document.title = `Admin — ${CONFIG.businessName}`;
+  const fav = document.getElementById('favicon');
+  if (fav) fav.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='${encodeURIComponent(CONFIG.accentColor)}'/></svg>`;
+}
+
+/* ----------------------------------------------------------------
+   PIN LOGIC
+   ---------------------------------------------------------------- */
+let pin = '';
+
+function appendPin(d) {
+  if (pin.length >= 4) return;
+  pin += d;
+  refreshDots();
+  if (pin.length === 4) setTimeout(checkPin, 90);
+}
+
+function deletePin() { pin = pin.slice(0,-1); refreshDots(); }
+
+function refreshDots() {
+  for (let i = 0; i < 4; i++)
+    document.getElementById(`dot-${i}`).classList.toggle('filled', i < pin.length);
+}
+
+function checkPin() {
+  if (pin === CONFIG.adminPin) {
+    sessionStorage.setItem(`${PFX()}_pin_verified`, 'true');
+    openDashboard();
+  } else {
+    const dots = document.getElementById('pin-dots');
+    dots.classList.add('shake');
+    document.getElementById('pin-err').textContent = 'Incorrect PIN — try again';
+    setTimeout(() => {
+      dots.classList.remove('shake');
+      document.getElementById('pin-err').textContent = '';
+      pin = '';
+      refreshDots();
+    }, 1600);
+  }
+}
+
+function openDashboard() {
+  document.getElementById('pin-screen').style.display  = 'none';
+  document.getElementById('dashboard').style.display   = 'flex';
+  document.getElementById('admin-title').textContent   = CONFIG.businessName;
+  activeTab = 'services';
+  renderActiveTab();
+}
+
+function logout() {
+  sessionStorage.removeItem(`${PFX()}_pin_verified`);
+  document.getElementById('dashboard').style.display  = 'none';
+  document.getElementById('pin-screen').style.display = 'flex';
+  pin = '';
+  refreshDots();
+}
+
+/* ----------------------------------------------------------------
+   TAB SWITCHING
+   ---------------------------------------------------------------- */
+let activeTab = 'services';
+
+function switchTab(name, btn) {
+  activeTab = name;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  btn.classList.add('active');
+  renderActiveTab();
+}
+
+function renderActiveTab() {
+  if (activeTab === 'services') renderServices();
+  if (activeTab === 'hours')    renderHours();
+  if (activeTab === 'blocked')  renderBlocked();
+}
+
+/* ----------------------------------------------------------------
+   SERVICES
+   ---------------------------------------------------------------- */
+function renderServices() {
+  const svcs = getServices();
+  const el   = document.getElementById('svc-list');
+
+  if (svcs.length === 0) {
+    el.innerHTML = '<div class="empty-state">No services yet — click "+ Add Service" to get started.</div>';
+    return;
+  }
+
+  el.innerHTML = svcs.map((s, i) => `
+    <div class="svc-list-wrap" style="border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden;margin-bottom:10px;">
+      <div class="svc-row-top">
+        <div>
+          <div class="svc-row-name">${esc(s.name)}</div>
+          <div class="svc-row-meta">${s.duration} min &middot; ${esc(s.price)}</div>
+        </div>
+        <div class="svc-row-btns">
+          <button class="edit-btn" onclick="toggleEdit(${i})">Edit</button>
+          <button class="del-btn"  onclick="deleteSvc(${i})" title="Delete">✕</button>
+        </div>
+      </div>
+      <div class="inline-edit" id="ie-${i}">
+        <div class="form-grid">
+          <div class="fld">
+            <label>Service Name</label>
+            <input type="text"   id="en-${i}"  value="${esc(s.name)}" />
+          </div>
+          <div class="fld">
+            <label>Minutes</label>
+            <input type="number" id="ed-${i}"  value="${s.duration}" min="5" max="480" />
+          </div>
+          <div class="fld">
+            <label>Price</label>
+            <div class="price-row">
+              <span class="price-pfx">R</span>
+              <input type="text" id="ep-${i}" value="${esc(s.price.replace(/^R/,''))}" style="flex:1" />
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary"   onclick="saveEdit(${i})">Save</button>
+          <button class="btn-secondary" onclick="toggleEdit(${i})">Cancel</button>
+          <button class="btn-danger"    onclick="deleteSvc(${i})">Remove service</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleEdit(i) {
+  document.getElementById(`ie-${i}`).classList.toggle('open');
+}
+
+function saveEdit(i) {
+  const name     = document.getElementById(`en-${i}`).value.trim();
+  const duration = parseInt(document.getElementById(`ed-${i}`).value, 10);
+  const price    = document.getElementById(`ep-${i}`).value.trim();
+  if (!name)           { toast('Service name is required', 'error');         return; }
+  if (!duration || duration < 1) { toast('Duration must be at least 1 min', 'error'); return; }
+  if (!price)          { toast('Price is required', 'error');                return; }
+  const svcs = getServices();
+  svcs[i] = { ...svcs[i], name, duration, price: `R${price}` };
+  putServices(svcs);
+  renderServices();
+  toast('Service updated ✓');
+}
+
+function deleteSvc(i) {
+  const svcs = getServices();
+  if (!confirm(`Remove "${svcs[i].name}"? This can't be undone.`)) return;
+  svcs.splice(i, 1);
+  putServices(svcs);
+  renderServices();
+  toast('Service removed');
+}
+
+/* Add form */
+function openAddForm() {
+  const f = document.getElementById('add-form-wrap');
+  f.classList.add('open');
+  ['add-name','add-duration','add-price'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('add-name').focus();
+}
+
+function closeAddForm() {
+  document.getElementById('add-form-wrap').classList.remove('open');
+}
+
+function slugify(s) {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+}
+
+function saveNewService() {
+  const name     = document.getElementById('add-name').value.trim();
+  const duration = parseInt(document.getElementById('add-duration').value, 10);
+  const price    = document.getElementById('add-price').value.trim();
+  if (!name)           { toast('Service name is required', 'error');         return; }
+  if (!duration || duration < 1) { toast('Duration must be at least 1 min', 'error'); return; }
+  if (!price)          { toast('Price is required', 'error');                return; }
+  const svcs = getServices();
+  let id = slugify(name);
+  if (svcs.some(s => s.id === id)) id = `${id}-${Date.now()}`;
+  svcs.push({ id, name, duration, price: `R${price}` });
+  putServices(svcs);
+  closeAddForm();
+  renderServices();
+  toast('Service added ✓');
+}
+
+/* ----------------------------------------------------------------
+   HOURS
+   ---------------------------------------------------------------- */
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function renderHours() {
+  const h = getHours();
+
+  document.getElementById('day-toggles').innerHTML = DAYS.map((d, i) => `
+    <button class="day-toggle${h.workingDays.includes(i) ? ' on' : ''}"
+            data-day="${i}"
+            onclick="this.classList.toggle('on')">${d}</button>
+  `).join('');
+
+  ['hours-start','hours-end'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = Array.from({length:24},(_,i) =>
+      `<option value="${i}">${String(i).padStart(2,'0')}:00</option>`
+    ).join('');
+  });
+
+  document.getElementById('hours-start').value = h.workingHours.start;
+  document.getElementById('hours-end').value   = h.workingHours.end;
+}
+
+function saveHoursAction() {
+  const days  = [...document.querySelectorAll('.day-toggle.on')].map(b => +b.dataset.day);
+  const start = +document.getElementById('hours-start').value;
+  const end   = +document.getElementById('hours-end').value;
+
+  if (days.length === 0) { toast('Select at least one working day', 'error'); return; }
+  if (start >= end)       { toast('Closing must be after opening', 'error');   return; }
+
+  putHours({ workingDays: days, workingHours: { start, end } });
+  toast('Hours saved ✓');
+}
+
+/* ----------------------------------------------------------------
+   BLOCK TIME
+   ---------------------------------------------------------------- */
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function fmt12(t24) {
+  if (!t24) return '';
+  const [h, m] = t24.split(':').map(Number);
+  return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function renderBlocked() {
+  const today = todayISO();
+  const dInput = document.getElementById('bd-date');
+  const sInput = document.getElementById('bs-date');
+  if (!dInput.min) dInput.min = today;
+  if (!sInput.min) sInput.min = today;
+
+  const list = getBlocked().sort((a,b) => a.date.localeCompare(b.date));
+  const el   = document.getElementById('blocked-list');
+
+  if (list.length === 0) {
+    el.innerHTML = '<div class="empty-state">No blocked times. Use the forms above to block time off.</div>';
+    return;
+  }
+
+  el.innerHTML = list.map((b, i) => {
+    const d    = new Date(b.date + 'T00:00:00');
+    const dfmt = d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+    const icon = b.type === 'day' ? '📅' : '🕐';
+    const slot = b.type === 'day' ? 'Full day' : fmt12(b.time);
+    return `
+      <div class="block-item">
+        <div>
+          <div class="block-item-date">${icon} ${dfmt} — ${slot}</div>
+          ${b.reason ? `<div class="block-item-reason">${esc(b.reason)}</div>` : ''}
+        </div>
+        <button class="remove-btn" onclick="removeBlock(${i})">Remove</button>
+      </div>`;
+  }).join('');
+}
+
+function populateSlotTimes() {
+  const dateVal = document.getElementById('bs-date').value;
+  const sel     = document.getElementById('bs-time');
+  if (!dateVal) { sel.innerHTML = '<option value="">— Select date first —</option>'; return; }
+
+  const { start, end } = getHours().workingHours;
+  const interval = CONFIG.slotIntervalMinutes;
+  const opts = [];
+
+  for (let h = start; h < end; h++) {
+    for (let m = 0; m < 60; m += interval) {
+      const t24 = `${pad(h)}:${pad(m)}`;
+      opts.push(`<option value="${t24}">${fmt12(t24)}</option>`);
+    }
+  }
+  sel.innerHTML = opts.join('');
+}
+
+function blockFullDay() {
+  const date   = document.getElementById('bd-date').value;
+  const reason = document.getElementById('bd-reason').value.trim();
+  if (!date) { toast('Please select a date', 'error'); return; }
+
+  const bl = getBlocked();
+  if (bl.some(b => b.date === date && b.type === 'day')) {
+    toast('This day is already blocked', 'error'); return;
+  }
+  bl.push({ type:'day', date, reason });
+  putBlocked(bl);
+  document.getElementById('bd-date').value   = '';
+  document.getElementById('bd-reason').value = '';
+  renderBlocked();
+  toast('Day blocked ✓');
+}
+
+function blockSlot() {
+  const date   = document.getElementById('bs-date').value;
+  const time   = document.getElementById('bs-time').value;
+  const reason = document.getElementById('bs-reason').value.trim();
+  if (!date) { toast('Please select a date', 'error');      return; }
+  if (!time) { toast('Please select a time slot', 'error'); return; }
+
+  const bl = getBlocked();
+  if (bl.some(b => b.date === date && b.type === 'slot' && b.time === time)) {
+    toast('This slot is already blocked', 'error'); return;
+  }
+  bl.push({ type:'slot', date, time, reason });
+  putBlocked(bl);
+  document.getElementById('bs-date').value   = '';
+  document.getElementById('bs-time').innerHTML = '<option value="">— Select date first —</option>';
+  document.getElementById('bs-reason').value = '';
+  renderBlocked();
+  toast('Slot blocked ✓');
+}
+
+function removeBlock(i) {
+  const bl = getBlocked();
+  bl.splice(i, 1);
+  putBlocked(bl);
+  renderBlocked();
+  toast('Removed ✓');
+}
+
+/* ----------------------------------------------------------------
+   TOAST
+   ---------------------------------------------------------------- */
+let _tt;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ----------------------------------------------------------------
+   INIT
+   ---------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', () => {
+  injectStyle();
+  document.getElementById('pin-biz-name').textContent = CONFIG.businessName;
+
+  if (sessionStorage.getItem(`${PFX()}_pin_verified`) === 'true') {
+    openDashboard();
+  }
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Booking System Guide</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       CLIENT CONFIG — change per client, drives all dynamic text
+       ============================================================ */
+
+    /* ============================================================
+       A4 PAGE LAYOUT
+       ============================================================ */
+    :root {
+      --accent: #c084fc;
+      --accent-dark: #9333ea;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13.5px;
+      color: #1f2937;
+      background: #e5e7eb;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 16px auto;
+      padding: 22mm 20mm 20mm;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page + .page { margin-top: 0; }
+
+    @media print {
+      body         { background: #fff; }
+      .page        { margin: 0; page-break-after: always; box-shadow: none; }
+      .page:last-child { page-break-after: auto; }
+      .no-print    { display: none !important; }
+    }
+
+    /* ============================================================
+       PRINT BUTTON (screen only)
+       ============================================================ */
+    .print-bar {
+      background: #1f2937;
+      color: #fff;
+      text-align: center;
+      padding: 14px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .print-bar button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 12px;
+    }
+
+    /* ============================================================
+       COVER PAGE
+       ============================================================ */
+    .cover-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .accent-bar {
+      width: 52px;
+      height: 5px;
+      background: var(--accent);
+      border-radius: 3px;
+      margin-bottom: 22px;
+    }
+
+    .cover-biz  { font-size: 30px; font-weight: 600; color: #111827; margin-bottom: 6px; line-height: 1.2; }
+    .cover-sub  { font-size: 16px; color: #6b7280; margin-bottom: 36px; }
+    .cover-body p { font-size: 15px; color: #374151; max-width: 420px; line-height: 1.65; }
+
+    .cover-footer {
+      position: absolute;
+      bottom: 20mm;
+      left: 20mm;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    /* ============================================================
+       CONTENT PAGES
+       ============================================================ */
+    .page-hdr {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 10px;
+      margin-bottom: 26px;
+    }
+
+    .page-title { font-size: 18px; font-weight: 600; color: #111827; }
+    .page-num   { font-size: 12px; color: #9ca3af; }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin: 22px 0 10px;
+    }
+
+    h2:first-of-type { margin-top: 0; }
+
+    p { color: #374151; margin-bottom: 12px; }
+
+    /* Link / code box */
+    .link-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #111827;
+      margin-bottom: 18px;
+      word-break: break-all;
+      letter-spacing: 0.1px;
+    }
+
+    /* Checklist */
+    .checklist { list-style: none; margin-bottom: 16px; }
+    .checklist li {
+      padding: 5px 0 5px 26px;
+      position: relative;
+      color: #374151;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .checklist li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Numbered steps */
+    .steps { list-style: none; margin-bottom: 16px; }
+    .steps li {
+      padding: 10px 0 10px 44px;
+      position: relative;
+      border-bottom: 1px solid #f3f4f6;
+      color: #374151;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: attr(data-n);
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* PIN box */
+    .pin-box {
+      background: #faf5ff;
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .pin-lbl { font-size: 11px; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+    .pin-val { font-size: 36px; font-weight: 600; letter-spacing: 10px; color: #111827; }
+
+    /* Warning / tip box */
+    .warn-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #92400e;
+      margin-bottom: 16px;
+      line-height: 1.55;
+    }
+
+    .tip-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #14532d;
+      margin-bottom: 16px;
+      line-height: 1.55;
+    }
+
+    /* Arrow list (features / upsell) */
+    .arrow-list { list-style: none; margin-bottom: 10px; }
+    .arrow-list li {
+      padding: 7px 0 7px 24px;
+      position: relative;
+      color: #374151;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 13.5px;
+    }
+    .arrow-list li:last-child { border-bottom: none; }
+    .arrow-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Contact card */
+    .contact-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .contact-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+    .contact-co   { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+    .contact-row  { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 14px; }
+    .contact-icon { font-size: 18px; }
+
+    /* Upsell box */
+    .upsell-box {
+      border: 1px solid rgba(192,132,252,0.4);
+      border-radius: 12px;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, rgba(250,245,255,1) 0%, rgba(243,232,255,0.4) 100%);
+    }
+    .upsell-title { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 12px; }
+
+    /* Admin steps visual */
+    .admin-steps { list-style: none; margin-bottom: 16px; }
+    .admin-steps li {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+      align-items: flex-start;
+    }
+    .admin-steps li:last-child { border-bottom: none; }
+    .admin-step-num {
+      min-width: 32px;
+      height: 32px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .admin-step-body strong { display: block; font-size: 14px; margin-bottom: 2px; }
+    .admin-step-body span  { font-size: 13px; color: #6b7280; }
+  </style>
+</head>
+
+<body>
+
+<!-- PRINT BAR (screen only) -->
+<div class="print-bar no-print">
+  Your client guide is ready.
+  <button onclick="window.print()">Save as PDF / Print</button>
+</div>
+
+<!-- ================================================================
+     PAGE 1 — COVER
+     ================================================================ -->
+<div class="page">
+  <div class="cover-body">
+    <div class="accent-bar"></div>
+    <div class="cover-biz" id="cover-biz-name">Business Name</div>
+    <div class="cover-sub">Your Online Booking System</div>
+    <p>
+      Set up and ready to go.<br>
+      Here's everything you need to know to manage your bookings and keep your calendar full.
+    </p>
+  </div>
+  <div class="cover-footer">Powered by Streamline Automations</div>
+</div>
+
+<!-- ================================================================
+     PAGE 2 — YOUR BOOKING PAGE
+     ================================================================ -->
+<div class="page">
+  <div class="page-hdr">
+    <div class="page-title">Your Booking Page</div>
+    <div class="page-num">Page 2 of 5</div>
+  </div>
+
+  <h2>Your Link</h2>
+  <div class="link-box" id="booking-url">https://your-site.vercel.app</div>
+
+  <h2>Share This Link Everywhere</h2>
+  <p>Every place your link appears is a potential booking. Make sure it's easy to find:</p>
+  <ul class="checklist">
+    <li>Add to your <strong>Instagram bio</strong> — the first thing every visitor sees</li>
+    <li>Pin it in your <strong>WhatsApp status</strong> and update it regularly</li>
+    <li>Share in your <strong>WhatsApp groups</strong> — existing clients spread the word</li>
+    <li>Add a <strong>Book Now button</strong> to your Facebook page</li>
+    <li>Add it to your <strong>Google Business profile</strong></li>
+  </ul>
+
+  <h2>How a Booking Works</h2>
+  <ol class="steps">
+    <li data-n="1">Customer opens your link on their phone</li>
+    <li data-n="2">They pick a service, choose a date and select a time</li>
+    <li data-n="3">They enter their name, email and phone number</li>
+    <li data-n="4">You receive an email with all their details instantly</li>
+    <li data-n="5">You contact them by WhatsApp or call to confirm</li>
+  </ol>
+
+  <div class="tip-box">
+    💡 <strong>Tip:</strong> All time slots show as available — you confirm each booking personally.
+    Use the admin panel to block times that are already taken.
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE 3 — ADMIN PANEL
+     ================================================================ -->
+<div class="page">
+  <div class="page-hdr">
+    <div class="page-title">Your Admin Panel</div>
+    <div class="page-num">Page 3 of 5</div>
+  </div>
+
+  <h2>Your Admin Link</h2>
+  <div class="link-box" id="admin-url">https://your-site.vercel.app/admin</div>
+
+  <h2>Your PIN — Keep This Safe</h2>
+  <div class="pin-box">
+    <div class="pin-lbl">Owner Access PIN</div>
+    <div class="pin-val" id="admin-pin">1234</div>
+  </div>
+  <div class="warn-box">
+    ⚠️ Don't share this PIN with anyone. If you ever want to change it, contact Streamline Automations.
+  </div>
+
+  <h2>3 Things You Can Do in Admin</h2>
+  <ul class="admin-steps">
+    <li>
+      <div class="admin-step-num">1</div>
+      <div class="admin-step-body">
+        <strong>Services</strong>
+        <span>Add new treatments, edit prices, change durations, or remove services you no longer offer.</span>
+      </div>
+    </li>
+    <li>
+      <div class="admin-step-num">2</div>
+      <div class="admin-step-body">
+        <strong>Hours</strong>
+        <span>Update which days you work and what time you open and close. Changes show immediately.</span>
+      </div>
+    </li>
+    <li>
+      <div class="admin-step-num">3</div>
+      <div class="admin-step-body">
+        <strong>Block Time</strong>
+        <span>Going on holiday? Full morning? Block a whole day or specific time slots so customers can't book them.</span>
+      </div>
+    </li>
+  </ul>
+</div>
+
+<!-- ================================================================
+     PAGE 4 — WHEN YOU GET A BOOKING
+     ================================================================ -->
+<div class="page">
+  <div class="page-hdr">
+    <div class="page-title">When You Get a Booking</div>
+    <div class="page-num">Page 4 of 5</div>
+  </div>
+
+  <h2>You'll Receive an Email</h2>
+  <p>Every booking request sends you an email immediately. It will include:</p>
+  <ul class="checklist">
+    <li>Customer's full name</li>
+    <li>Their email address</li>
+    <li>Their phone number</li>
+    <li>Which service they want</li>
+    <li>The date and time they've requested</li>
+    <li>Any special notes they added</li>
+  </ul>
+
+  <h2>What To Do</h2>
+  <p>
+    Contact the customer on WhatsApp or by phone to confirm the appointment.
+    They've already been told: <em>"You'll receive a confirmation shortly."</em>
+    So they're expecting your message.
+  </p>
+
+  <h2>If You Can't Take That Slot</h2>
+  <p>
+    Simply message the customer and offer them another time.
+    To stop that slot showing in future, block it in your admin panel under <strong>Block Time</strong>.
+  </p>
+
+  <div class="tip-box">
+    💡 <strong>Tip:</strong> Reply to booking requests within 1–2 hours.
+    Clients who get a fast response are much more likely to become regulars and leave 5-star reviews.
+  </div>
+
+  <div class="warn-box">
+    📧 Check your spam folder when you first set up. Add <span id="owner-email">owner@salon.co.za</span> to your email contacts so booking notifications don't get filtered.
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE 5 — HELP & UPGRADES
+     ================================================================ -->
+<div class="page">
+  <div class="page-hdr">
+    <div class="page-title">Need Help?</div>
+    <div class="page-num">Page 5 of 5</div>
+  </div>
+
+  <h2>Your Contact at Streamline Automations</h2>
+  <div class="contact-card">
+    <div class="contact-name">Christiaan Steffen</div>
+    <div class="contact-co">Streamline Automations</div>
+    <div class="contact-row">
+      <span class="contact-icon">💬</span>
+      <strong>WhatsApp: 063 306 3861</strong>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">📧</span>
+      <span>christian@streamline-automations.agency</span>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">🌐</span>
+      <span>streamline-automations.agency</span>
+    </div>
+  </div>
+
+  <h2>Want More from Your Booking System?</h2>
+  <div class="upsell-box">
+    <div class="upsell-title">Ask about the Client Magnet Package</div>
+    <ul class="arrow-list">
+      <li>Automatic confirmation email sent to every customer instantly</li>
+      <li>WhatsApp reminder the day before each appointment</li>
+      <li>No-show follow-up messages that bring clients back</li>
+      <li>Full professional website with your booking page built in</li>
+      <li>Google ranking so new clients find you without any ads</li>
+      <li>Monthly report: bookings, revenue, and new vs returning clients</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   CONFIG — update per client before printing
+   ================================================================ */
+const CONFIG = {
+  businessName: "True Reflection Nails",
+  accentColor:  "#c084fc",
+  adminPin:     "1234",
+  siteUrl:      "https://booking-page-beta.vercel.app",
+  ownerEmail:   "owner@salon.co.za",
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+
+  const fill = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  fill('cover-biz-name', CONFIG.businessName);
+  fill('booking-url',    CONFIG.siteUrl);
+  fill('admin-url',      `${CONFIG.siteUrl}/admin`);
+  fill('admin-pin',      CONFIG.adminPin);
+  fill('owner-email',    CONFIG.ownerEmail);
+
+  document.title = `${CONFIG.businessName} — Booking System Guide`;
+});
+</script>
+
+</body>
+</html>

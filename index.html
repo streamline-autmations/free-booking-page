@@ -309,6 +309,13 @@
     .date-pill.selected .date-day { color: rgba(255,255,255,0.82); }
     .date-pill.selected .date-num { color: #fff; }
 
+    .date-pill.blocked {
+      opacity: 0.38;
+      cursor: not-allowed;
+      text-decoration: line-through;
+      pointer-events: none;
+    }
+
     /* ================================================================
        STEP 2 — TIME SLOTS
        ================================================================ */
@@ -762,7 +769,50 @@ const CONFIG = {
   // Branding
   poweredByText: "Powered by Streamline Automations",
   poweredByUrl:  "https://streamline-automations.agency",
+
+  // Admin — keep this PIN in sync with admin.html
+  adminPin: "1234",
 };
+
+/* ----------------------------------------------------------------
+   LOCALSTORAGE — load admin-saved data, overrides CONFIG defaults
+   ---------------------------------------------------------------- */
+function loadSavedData() {
+  const p = `sa_booking_${CONFIG.businessId}`;
+  try {
+    const sv = localStorage.getItem(`${p}_services`);
+    if (sv) CONFIG.services = JSON.parse(sv);
+
+    const sh = localStorage.getItem(`${p}_hours`);
+    if (sh) {
+      const h = JSON.parse(sh);
+      if (h.workingDays)  CONFIG.workingDays  = h.workingDays;
+      if (h.workingHours) CONFIG.workingHours = h.workingHours;
+    }
+
+    const sb = localStorage.getItem(`${p}_blocked`);
+    window.blockedSlots = sb ? JSON.parse(sb) : [];
+  } catch(e) {
+    window.blockedSlots = [];
+  }
+}
+
+/* ----------------------------------------------------------------
+   BLOCKED SLOT HELPERS
+   ---------------------------------------------------------------- */
+function isDayFullyBlocked(dateObj) {
+  if (!window.blockedSlots || !window.blockedSlots.length) return false;
+  const ds = isoDate(dateObj);
+  return window.blockedSlots.some(b => b.date === ds && b.type === 'day');
+}
+
+function isSlotBlocked(dateObj, time24) {
+  if (!window.blockedSlots || !window.blockedSlots.length) return false;
+  const ds = isoDate(dateObj);
+  return window.blockedSlots.some(b =>
+    b.date === ds && (b.type === 'day' || (b.type === 'slot' && b.time === time24))
+  );
+}
 
 /* ----------------------------------------------------------------
    STATE
@@ -960,10 +1010,13 @@ function buildDateStrip() {
 
   const strip = document.getElementById('date-strip');
   strip.innerHTML = pills.map(d => {
-    const iso = isoDate(d);
-    const sel = iso === S.dateISO ? ' selected' : '';
+    const iso     = isoDate(d);
+    const sel     = iso === S.dateISO ? ' selected' : '';
+    const blocked = isDayFullyBlocked(d);
+    const bc      = blocked ? ' blocked' : '';
+    const click   = blocked ? '' : `onclick="pickDate('${iso}',${d.getTime()})"`;
     return `
-      <div class="date-pill${sel}" id="dp-${iso}" onclick="pickDate('${iso}',${d.getTime()})">
+      <div class="date-pill${sel}${bc}" id="dp-${iso}" ${click}>
         <span class="date-day">${shortDay(d)}</span>
         <span class="date-num">${d.getDate()}</span>
       </div>`;
@@ -1013,11 +1066,14 @@ function buildTimeSlots() {
     : '';
   document.getElementById('time-label').textContent = `Available times${shortLabel ? ' — ' + shortLabel : ''}`;
 
+  // Filter out admin-blocked slots
+  const visible = slots.filter(({ h, m }) => !isSlotBlocked(S.dateObj, fmt24(h, m)));
+
   const grid = document.getElementById('time-grid');
-  if (slots.length === 0) {
+  if (visible.length === 0) {
     grid.innerHTML = `<div class="no-slots">No times available for this service on this day.</div>`;
   } else {
-    grid.innerHTML = slots.map(({ h, m }) => {
+    grid.innerHTML = visible.map(({ h, m }) => {
       const t24  = fmt24(h, m);
       const t12  = fmt12(h, m);
       const sel  = t24 === S.time24 ? ' selected' : '';
@@ -1195,7 +1251,7 @@ function resetBooking() {
 /* ----------------------------------------------------------------
    GO
    ---------------------------------------------------------------- */
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded', () => { loadSavedData(); boot(); });
 
 </script>
 </body>
