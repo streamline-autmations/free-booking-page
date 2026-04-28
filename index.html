@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book Online</title>
   <link rel="icon" id="favicon" href="" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
   <style>
     /* ================================================================
@@ -733,67 +734,191 @@
 <script>
 
 /* ----------------------------------------------------------------
-   CONFIG — change this object for each new client. Nothing else.
+   CONFIG — dynamically loaded from Supabase
    ---------------------------------------------------------------- */
-const CONFIG = {
-  // Business identity
-  businessName:    "True Reflection Nails",
-  businessId:      "true-reflection",          // lowercase-hyphenated, used in webhook payload
-  tagline:         "Professional nail care in Sandton",
-  logoUrl:         "",                          // URL to logo image — leave "" to show businessName as text
-  accentColor:     "#c084fc",                   // brand colour
-  accentColorDark: "#9333ea",                   // slightly darker, used for hover states
-
-  // Contact
-  ownerEmail: "owner@salon.co.za",              // booking notifications land here
-  phone:      "",                               // shown in footer if provided (e.g. "+27 71 234 5678")
-
-  // Services — add/remove as needed
-  services: [
-    { id: "gel-mani",    name: "Gel Manicure",       duration: 60,  price: "R280" },
-    { id: "acrylic-set", name: "Acrylic Full Set",   duration: 90,  price: "R420" },
-    { id: "gel-pedi",    name: "Gel Pedicure",       duration: 75,  price: "R320" },
-    { id: "nail-art",    name: "Nail Art (per nail)", duration: 30, price: "R80"  },
-  ],
-
-  // Availability
-  workingDays:          [1,2,3,4,5,6],  // 0=Sun … 6=Sat
-  workingHours:         { start: 8, end: 17 },  // 24-hr
-  slotIntervalMinutes:  30,
-  advanceBookingDays:   30,
-  sameDayBooking:       true,
-
-  // Webhook — paste your n8n URL here when ready; leave "" to test UI without a live endpoint
-  webhookUrl: "",
-
-  // Branding
-  poweredByText: "Powered by Streamline Automations",
-  poweredByUrl:  "https://streamline-automations.agency",
-
-  // Admin — keep this PIN in sync with admin.html
-  adminPin: "1234",
-};
+let CONFIG = null;
+let supabaseClient = null;
 
 /* ----------------------------------------------------------------
-   LOCALSTORAGE — load admin-saved data, overrides CONFIG defaults
+   LOCALSTORAGE — deprecated: now using Supabase
+   ---------------------------------------------------------------- */
+function getBusinessIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  let bizId = params.get('biz') || params.get('business') || 'demo-salon';
+  return bizId;
+}
+
+async function initSupabase() {
+  const SUPABASE_URL = 'https://ighqgqyzlkhmspflbzsh.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaHFncXl6bGtobXNwZmxienNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzg5NzksImV4cCI6MjA5MjkxNDk3OX0.PZdDy9CUCJYqxSUuLFjoWBgNjVnpCYw0LtXPTEwuIK8';
+  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+/* ----------------------------------------------------------------
+   BLOCKED SLOTS & BOOKINGS STATE
+   ---------------------------------------------------------------- */
+let blockedSlots = [];
+let existingBookings = [];
+
+function parseTime(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+function isSlotTaken(dateStr, time, serviceDuration) {
+  if (!existingBookings || !existingBookings.length) return false;
+  const slotStart = parseTime(time);
+  const slotEnd = slotStart + serviceDuration;
+  return existingBookings.some(b => {
+    if (b.booking_date !== dateStr) return false;
+    const bStart = parseTime(b.booking_time);
+    const bEnd = bStart + (b.duration || 60);
+    return slotStart < bEnd && slotEnd > bStart;
+  });
+}
+
+function isDayFullyBlocked(dateObj) {
+  if (!blockedSlots || !blockedSlots.length) return false;
+  const ds = isoDate(dateObj);
+  return blockedSlots.some(b => b.date === ds && b.type === 'day');
+}
+
+function isSlotBlocked(dateObj, time24) {
+  if (!blockedSlots || !blockedSlots.length) return false;
+  const ds = isoDate(dateObj);
+  return blockedSlots.some(b =>
+    b.date === ds && (b.type === 'day' || (b.type === 'slot' && b.time === time24))
+  );
+}
+
+/* ----------------------------------------------------------------
+   LOAD DATA FROM SUPABASE
+   ---------------------------------------------------------------- */
+async function loadBusinessData() {
+  const bizId = getBusinessIdFromUrl();
+
+  if (!bizId) {
+    showNoBusinessError();
+    return false;
+  }
+
+  // Fetch business config
+  const { data: business, error: bizError } = await supabaseClient
+    .from('businesses')
+    .select('*')
+    .eq('id', bizId)
+    .single();
+
+  if (bizError || !business) {
+    console.warn('Business not found, using defaults:', bizError);
+    // Fall back to default CONFIG embedded in HTML
+    useDefaultConfig();
+    return true;
+  }
+
+  // Fetch services
+  const { data: services } = await supabaseClient
+    .from('services')
+    .select('*')
+    .eq('business_id', bizId)
+    .order('sort_order');
+
+  // Fetch blocked slots (future only)
+  const today = new Date().toISOString().split('T')[0];
+  const { data: blocked } = await supabaseClient
+    .from('blocked_slots')
+    .select('*')
+    .eq('business_id', bizId)
+    .gte('date', today);
+
+  // Fetch confirmed bookings (for availability checking)
+  const { data: bookings } = await supabaseClient
+    .from('bookings')
+    .select('booking_date, booking_time, duration, status')
+    .eq('business_id', bizId)
+    .in('status', ['pending', 'confirmed'])
+    .gte('booking_date', today);
+
+  CONFIG = {
+    businessId: business.id,
+    businessName: business.name,
+    tagline: business.tagline || '',
+    logoUrl: business.logo_url || '',
+    accentColor: business.accent_color || '#c084fc',
+    accentColorDark: business.accent_dark || '#9333ea',
+    ownerEmail: business.owner_email || '',
+    phone: business.phone || '',
+    services: (services || []).map(s => ({
+      id: s.id,
+      name: s.name,
+      duration: s.duration,
+      price: s.price
+    })),
+    workingDays: business.working_days || [1,2,3,4,5,6],
+    workingHours: business.working_hours || { start: 8, end: 17 },
+    slotIntervalMinutes: business.slot_interval || 30,
+    advanceBookingDays: business.advance_days || 30,
+    sameDayBooking: business.same_day !== false,
+    webhookUrl: business.webhook_url || ''
+  };
+
+  blockedSlots = blocked || [];
+  existingBookings = bookings || [];
+
+  return true;
+}
+
+function useDefaultConfig() {
+  CONFIG = {
+    businessId: getBusinessIdFromUrl(),
+    businessName: "True Reflection Nails",
+    tagline: "Professional nail care in Sandton",
+    logoUrl: "",
+    accentColor: "#c084fc",
+    accentColorDark: "#9333ea",
+    ownerEmail: "owner@salon.co.za",
+    phone: "",
+    services: [
+      { id: "gel-mani", name: "Gel Manicure", duration: 60, price: "R280" },
+      { id: "acrylic-set", name: "Acrylic Full Set", duration: 90, price: "R420" },
+      { id: "gel-pedi", name: "Gel Pedicure", duration: 75, price: "R320" },
+      { id: "nail-art", name: "Nail Art (per nail)", duration: 30, price: "R80" },
+    ],
+    workingDays: [1,2,3,4,5,6],
+    workingHours: { start: 8, end: 17 },
+    slotIntervalMinutes: 30,
+    advanceBookingDays: 30,
+    sameDayBooking: true,
+    webhookUrl: ""
+  };
+  blockedSlots = [];
+  existingBookings = [];
+}
+
+function showNoBusinessError() {
+  document.body.innerHTML = '<div style="padding:2rem;text-align:center;font-family:sans-serif;"><h2>No business specified</h2><p>Add ?biz=your-business-id to the URL</p></div>';
+}
+
+/* ----------------------------------------------------------------
+   LOAD ADMIN-SAVED DATA FROM SUPABASE (via CONFIG)
    ---------------------------------------------------------------- */
 function loadSavedData() {
-  const p = `sa_booking_${CONFIG.businessId}`;
+  // Data is now loaded via Supabase directly in loadBusinessData
+  // localStorage is deprecated but kept for manual overrides
   try {
+    const p = `sa_booking_${CONFIG.businessId}`;
     const sv = localStorage.getItem(`${p}_services`);
     if (sv) CONFIG.services = JSON.parse(sv);
-
     const sh = localStorage.getItem(`${p}_hours`);
     if (sh) {
       const h = JSON.parse(sh);
       if (h.workingDays)  CONFIG.workingDays  = h.workingDays;
       if (h.workingHours) CONFIG.workingHours = h.workingHours;
     }
-
     const sb = localStorage.getItem(`${p}_blocked`);
-    window.blockedSlots = sb ? JSON.parse(sb) : [];
+    window.blockedSlots = sb ? JSON.parse(sb) : (window.blockedSlots || []);
   } catch(e) {
-    window.blockedSlots = [];
+    window.blockedSlots = window.blockedSlots || [];
   }
 }
 
@@ -861,26 +986,52 @@ function shortDay(d) {
 function firstName(name) { return name.trim().split(' ')[0]; }
 
 /* ----------------------------------------------------------------
-   BOOT — inject CSS vars, set title/favicon, render static parts
+   SHOW LOADING STATE
+   ---------------------------------------------------------------- */
+function showLoadingState() {
+  const outer = document.getElementById('steps-outer');
+  if (outer) {
+    outer.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-2);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:16px;animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-6.219-8.56"/><polyline points="21 12 12 12 9 21"/></svg><br/>Loading…</div>';
+  }
+}
+
+/* ----------------------------------------------------------------
+   BOOT
    ---------------------------------------------------------------- */
 function boot() {
-  // CSS variables from CONFIG
+  // CSS variables from CONFIG (use defaults for initial render)
+  const r = document.documentElement;
+  r.style.setProperty('--accent',       CONFIG.accentColor || '#c084fc');
+  r.style.setProperty('--accent-dark',  CONFIG.accentColorDark || '#9333ea');
+  r.style.setProperty('--accent-tint',  hexRgba(CONFIG.accentColor || '#c084fc', 0.07));
+  r.style.setProperty('--accent-focus', hexRgba(CONFIG.accentColor || '#c084fc', 0.26));
+
+  // Page title - will be updated after load
+  document.title = CONFIG ? `${CONFIG.businessName} — Book Online` : 'Book Online';
+}
+
+/* ----------------------------------------------------------------
+   GO
+   ---------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', async () => {
+  // Step 1: Initialize default config for immediate render
+  useDefaultConfig();
+  loadSavedData();
+  boot();
+
+  // Step 2: Initialize Supabase and load real data
+  await initSupabase();
+  await loadBusinessData();
+
+  // Step 3: Re-render with real data
   const r = document.documentElement;
   r.style.setProperty('--accent',       CONFIG.accentColor);
   r.style.setProperty('--accent-dark',  CONFIG.accentColorDark);
   r.style.setProperty('--accent-tint',  hexRgba(CONFIG.accentColor, 0.07));
   r.style.setProperty('--accent-focus', hexRgba(CONFIG.accentColor, 0.26));
-
-  // Page title
   document.title = `${CONFIG.businessName} — Book Online`;
 
-  // Favicon: filled circle in accent colour
-  document.getElementById('favicon').href =
-    `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>` +
-    `<circle cx='50' cy='50' r='50' fill='${encodeURIComponent(CONFIG.accentColor)}'/>` +
-    `</svg>`;
-
-  // Header
+  // Re-render header and footer
   const h = document.getElementById('header-inner');
   if (CONFIG.logoUrl) {
     h.innerHTML = `<img class="logo-img" src="${CONFIG.logoUrl}" alt="${CONFIG.businessName}" />`;
@@ -891,367 +1042,13 @@ function boot() {
     h.innerHTML += `<div class="biz-tagline">${CONFIG.tagline}</div>`;
   }
 
-  // Footer
   const biz = document.getElementById('footer-biz');
   biz.innerHTML = CONFIG.businessName + (CONFIG.phone ? ` · <span class="footer-phone">${CONFIG.phone}</span>` : '');
 
-  document.getElementById('footer-pow').innerHTML =
-    `<a href="${CONFIG.poweredByUrl}" target="_blank" rel="noopener noreferrer">${CONFIG.poweredByText} ↗</a>`;
-
-  // Services
+  // Re-render services
   renderServices();
-
-  // Initial progress state
   setProgress(1);
-}
-
-/* ----------------------------------------------------------------
-   PROGRESS BAR
-   ---------------------------------------------------------------- */
-const CHECK_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-
-function setProgress(step) {
-  for (let i = 1; i <= 3; i++) {
-    const ps = document.getElementById(`ps-${i}`);
-    const sc = document.getElementById(`sc-${i}`);
-    ps.className = 'progress-step' + (i < step ? ' completed' : i === step ? ' active' : '');
-    sc.innerHTML  = i < step ? CHECK_SVG : String(i);
-  }
-}
-
-/* ----------------------------------------------------------------
-   STEP TRANSITIONS
-   ---------------------------------------------------------------- */
-function goToStep(target) {
-  if (target === S.step) return;
-
-  const from = document.getElementById(`step-${S.step}`);
-  const to   = document.getElementById(`step-${target}`);
-
-  from.classList.add('exiting');
-
-  setTimeout(() => {
-    from.classList.remove('active', 'exiting');
-
-    // Render destination panel content
-    if (target === 2) renderStep2();
-    if (target === 3) renderStep3();
-
-    to.classList.add('active');
-    S.step = target;
-    setProgress(target);
-
-    // Scroll to top of booking area
-    const top = document.getElementById('progress-wrap').getBoundingClientRect().top + window.scrollY - 12;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-  }, 200);
-}
-
-/* ----------------------------------------------------------------
-   STEP 1 — Services
-   ---------------------------------------------------------------- */
-function renderServices() {
-  document.getElementById('services-grid').innerHTML = CONFIG.services.map(s => `
-    <div class="svc-card" id="svc-${s.id}" onclick="pickService('${s.id}')">
-      <div class="svc-check">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <div class="svc-name">${s.name}</div>
-      <div class="svc-duration">${s.duration} min</div>
-      <div class="svc-price">${s.price}</div>
-    </div>
-  `).join('');
-}
-
-function pickService(id) {
-  const prev = S.service;
-  S.service = CONFIG.services.find(s => s.id === id);
-
-  // If service changed, clear date/time so duration-invalid slots don't persist
-  if (prev && prev.id !== id) {
-    S.dateISO = null; S.dateObj = null; S.dateLong = '';
-    S.time24  = null; S.time12  = null;
-  }
-
-  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById(`svc-${id}`).classList.add('selected');
-
-  setTimeout(() => goToStep(2), 280);
-}
-
-/* ----------------------------------------------------------------
-   STEP 2 — Date strip
-   ---------------------------------------------------------------- */
-function renderStep2() {
-  buildDateStrip();
-
-  if (S.dateISO) {
-    buildTimeSlots();
-    document.getElementById('time-section').style.display = 'block';
-    document.getElementById('continue-btn').classList.toggle('show', !!S.time24);
-  } else {
-    document.getElementById('time-section').style.display = 'none';
-    document.getElementById('continue-btn').classList.remove('show');
-  }
-}
-
-function buildDateStrip() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const pills = [];
-  for (let i = 0; i <= CONFIG.advanceBookingDays; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    if (!CONFIG.workingDays.includes(d.getDay())) continue;
-    if (i === 0 && !CONFIG.sameDayBooking)          continue;
-    pills.push(d);
-  }
-
-  const strip = document.getElementById('date-strip');
-  strip.innerHTML = pills.map(d => {
-    const iso     = isoDate(d);
-    const sel     = iso === S.dateISO ? ' selected' : '';
-    const blocked = isDayFullyBlocked(d);
-    const bc      = blocked ? ' blocked' : '';
-    const click   = blocked ? '' : `onclick="pickDate('${iso}',${d.getTime()})"`;
-    return `
-      <div class="date-pill${sel}${bc}" id="dp-${iso}" ${click}>
-        <span class="date-day">${shortDay(d)}</span>
-        <span class="date-num">${d.getDate()}</span>
-      </div>`;
-  }).join('');
-}
-
-function pickDate(iso, ts) {
-  S.dateISO  = iso;
-  S.dateObj  = new Date(ts);
-  S.dateLong = longDate(S.dateObj);
-
-  // Clear time selection when date changes
-  S.time24 = null;
-  S.time12 = null;
-  document.getElementById('continue-btn').classList.remove('show');
-
-  document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('selected'));
-  const pill = document.getElementById(`dp-${iso}`);
-  if (pill) pill.classList.add('selected');
-
-  document.getElementById('time-section').style.display = 'block';
-  buildTimeSlots();
-}
-
-/* ----------------------------------------------------------------
-   STEP 2 — Time slots
-   ---------------------------------------------------------------- */
-function buildTimeSlots() {
-  const { start, end } = CONFIG.workingHours;
-  const interval = CONFIG.slotIntervalMinutes;
-  const duration = S.service ? S.service.duration : 60;
-
-  const slots = [];
-  for (let h = start; h < end; h++) {
-    for (let m = 0; m < 60; m += interval) {
-      const endMin = h * 60 + m + duration;
-      // Only include if the appointment finishes by working hours end
-      if (Math.floor(endMin / 60) < end || (Math.floor(endMin / 60) === end && endMin % 60 === 0)) {
-        slots.push({ h, m });
-      }
-    }
-  }
-
-  // Label e.g. "Available times — Tue, 29 Apr"
-  const shortLabel = S.dateObj
-    ? S.dateObj.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' })
-    : '';
-  document.getElementById('time-label').textContent = `Available times${shortLabel ? ' — ' + shortLabel : ''}`;
-
-  // Filter out admin-blocked slots
-  const visible = slots.filter(({ h, m }) => !isSlotBlocked(S.dateObj, fmt24(h, m)));
-
-  const grid = document.getElementById('time-grid');
-  if (visible.length === 0) {
-    grid.innerHTML = `<div class="no-slots">No times available for this service on this day.</div>`;
-  } else {
-    grid.innerHTML = visible.map(({ h, m }) => {
-      const t24  = fmt24(h, m);
-      const t12  = fmt12(h, m);
-      const sel  = t24 === S.time24 ? ' selected' : '';
-      return `<div class="time-slot${sel}" id="ts-${t24}" onclick="pickTime('${t24}','${t12}')">${t12}</div>`;
-    }).join('');
-  }
-
-  document.getElementById('avail-note').textContent =
-    `Booking requests are confirmed by ${CONFIG.businessName} — you'll receive a confirmation shortly.`;
-}
-
-function pickTime(t24, t12) {
-  S.time24 = t24;
-  S.time12 = t12;
-
-  document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
-  const el = document.getElementById(`ts-${t24}`);
-  if (el) el.classList.add('selected');
-
-  document.getElementById('continue-btn').classList.add('show');
-}
-
-/* ----------------------------------------------------------------
-   STEP 3 — Summary card
-   ---------------------------------------------------------------- */
-function renderStep3() {
-  const svc = S.service;
-  document.getElementById('bkg-summary').innerHTML = `
-    <div class="bkg-summary-title">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-      </svg>
-      Your Booking
-    </div>
-    <div class="bkg-row"><span class="bkg-label">Service</span> <span class="bkg-value">${svc.name}</span></div>
-    <div class="bkg-row"><span class="bkg-label">Date</span>    <span class="bkg-value">${S.dateLong}</span></div>
-    <div class="bkg-row"><span class="bkg-label">Time</span>    <span class="bkg-value">${S.time12}</span></div>
-    <div class="bkg-row"><span class="bkg-label">Duration</span><span class="bkg-value">${svc.duration} min</span></div>
-    <div class="bkg-row"><span class="bkg-label">Price</span>   <span class="bkg-value">${svc.price}</span></div>
-  `;
-}
-
-/* ----------------------------------------------------------------
-   FORM VALIDATION
-   ---------------------------------------------------------------- */
-function validate() {
-  let ok = true;
-  let first = null;
-
-  function check(inputId, errId, test) {
-    const el  = document.getElementById(inputId);
-    const err = document.getElementById(errId);
-    const bad = !test(el.value.trim());
-    el.classList.toggle('err', bad);
-    err.classList.toggle('show', bad);
-    if (bad && !first) first = el;
-    if (bad) ok = false;
-  }
-
-  check('f-name',  'e-name',  v => v.length > 0);
-  check('f-email', 'e-email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
-  check('f-phone', 'e-phone', v => v.replace(/\D/g,'').length >= 7);
-
-  if (first) { first.scrollIntoView({ behavior:'smooth', block:'center' }); first.focus(); }
-  return ok;
-}
-
-/* ----------------------------------------------------------------
-   FORM SUBMISSION
-   ---------------------------------------------------------------- */
-async function handleSubmit(e) {
-  e.preventDefault();
-  if (!validate()) return;
-
-  const btn  = document.getElementById('submit-btn');
-  const txt  = document.getElementById('submit-text');
-  btn.disabled = true;
-  btn.classList.add('loading');
-  txt.textContent = 'Sending…';
-
-  const name  = document.getElementById('f-name').value.trim();
-  const email = document.getElementById('f-email').value.trim();
-  const phone = document.getElementById('f-phone').value.trim();
-  const note  = document.getElementById('f-note').value.trim();
-
-  const payload = {
-    businessId:   CONFIG.businessId,
-    businessName: CONFIG.businessName,
-    ownerEmail:   CONFIG.ownerEmail,
-    customer:     { name, email, phone, note },
-    booking: {
-      service:       S.service.name,
-      serviceId:     S.service.id,
-      duration:      S.service.duration,
-      price:         S.service.price,
-      date:          S.dateISO,
-      time:          S.time24,
-      dateFormatted: S.dateLong,
-      timeFormatted: S.time12,
-    },
-    submittedAt: new Date().toISOString(),
-  };
-
-  if (CONFIG.webhookUrl) {
-    try {
-      await fetch(CONFIG.webhookUrl, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
-      });
-    } catch (err) {
-      // Never surface backend failures to user — log only
-      console.error('[booking] Webhook error:', err);
-    }
-  }
-
-  showSuccess(name);
-}
-
-/* ----------------------------------------------------------------
-   SUCCESS STATE
-   ---------------------------------------------------------------- */
-function showSuccess(customerName) {
-  document.getElementById('steps-outer').style.display  = 'none';
-  document.getElementById('progress-wrap').style.display = 'none';
-
-  document.getElementById('success-msg').innerHTML =
-    `Thanks ${firstName(customerName)}! We've received your request for ` +
-    `<strong>${S.service.name}</strong> on ${S.dateLong} at ${S.time12}.<br><br>` +
-    `${CONFIG.businessName} will confirm your appointment shortly.`;
-
-  // Re-trigger the SVG animation by replacing the node
-  const old = document.querySelector('.success-svg');
-  const fresh = old.cloneNode(true);
-  old.replaceWith(fresh);
-
-  document.getElementById('success-state').classList.add('show');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-/* ----------------------------------------------------------------
-   RESET — back to step 1
-   ---------------------------------------------------------------- */
-function resetBooking() {
-  S = { step:1, service:null, dateISO:null, dateObj:null, dateLong:'', time24:null, time12:null };
-
-  // Reset form
-  document.getElementById('booking-form').reset();
-  document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.classList.remove('err'));
-  document.querySelectorAll('.form-err-msg').forEach(el => el.classList.remove('show'));
-
-  // Restore submit button
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = false;
-  btn.classList.remove('loading');
-  document.getElementById('submit-text').textContent = 'Confirm Booking Request →';
-
-  // Restore service card visual state
-  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
-
-  // Hide success, show booking panels
-  document.getElementById('success-state').classList.remove('show');
-  document.getElementById('steps-outer').style.display   = 'block';
-  document.getElementById('progress-wrap').style.display = 'block';
-
-  // Activate step 1
-  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active','exiting'));
-  document.getElementById('step-1').classList.add('active');
-
-  setProgress(1);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-/* ----------------------------------------------------------------
-   GO
-   ---------------------------------------------------------------- */
-document.addEventListener('DOMContentLoaded', () => { loadSavedData(); boot(); });
+});
 
 </script>
 </body>
