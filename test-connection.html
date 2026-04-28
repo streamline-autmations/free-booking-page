@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Connection Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h1 { color: #c084fc; margin-bottom: 30px; }
+    .test-item { padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #ccc; background: #fafafa; }
+    .test-item.pass { border-left-color: #10b981; background: #ecfdf5; }
+    .test-item.fail { border-left-color: #ef4444; background: #fef2f2; }
+    .test-item .label { font-weight: bold; margin-bottom: 5px; }
+    .test-item .status { font-size: 12px; margin-top: 5px; }
+    button { background: #c084fc; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    button:hover { background: #9333ea; }
+    .sql-display { background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Supabase Connection Test</h1>
+    <p>This page tests if all Supabase files are properly configured.</p>
+    
+    <div id="tests"></div>
+    
+    <button onclick="runAllTests()">Run All Tests</button>
+    
+    <h2 style="margin-top: 30px;">SQL to Run in Supabase Studio</h2>
+    <div class="sql-display">
+-- Add test business
+INSERT INTO businesses (id, name, tagline, accent_color, accent_dark, owner_email, admin_pin_hash, working_days, working_hours, slot_interval, advance_days)
+VALUES (
+  'dry-run-salon',
+  'Dry Run Salon',
+  'Test business for dry run',
+  '#d8b4fe',
+  '#7c3aed',
+  'test@example.com',
+  encode(digest('1234', 'sha256'), 'hex'),
+  '[1,2,3,4,5,6]',
+  '{"start":9,"end":18}',
+  30,
+  30
+);
+
+-- Add test services
+INSERT INTO services (business_id, name, duration, price, sort_order) VALUES
+  ('dry-run-salon', 'Test Cut', 30, '$50', 1),
+  ('dry-run-salon', 'Test Style', 60, '$80', 2),
+  ('dry-run-salon', 'Test Color', 90, '$120', 3);
+    </div>
+    
+    <p>Then access: <code>your-domain.com/?biz=dry-run-salon</code></p>
+  </div>
+  
+  <script>
+    const tests = [
+      {
+        id: 'env-file',
+        name: '.env file exists with Supabase keys',
+        check: () => fetch('.env').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'migration-file',
+        name: 'Database migration SQL exists',
+        check: () => fetch('supabase/migrations/001_initial_schema.sql').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'webhook-file',
+        name: 'Webhook function exists',
+        check: () => fetch('supabase/functions/booking-webhook/index.ts').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'netlify-auth',
+        name: 'Netlify auth function exists',
+        check: () => fetch('netlify/functions/admin-auth.js').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'netlify-save',
+        name: 'Netlify save function exists',
+        check: () => fetch('netlify/functions/admin-save.js').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'netlify-block',
+        name: 'Netlify block function exists',
+        check: () => fetch('netlify/functions/admin-block.js').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'netlify-config',
+        name: 'Netlify config exists',
+        check: () => fetch('netlify.toml').then(r => r.ok).catch(() => false)
+      },
+      {
+        id: 'index-supabase',
+        name: 'index.html has Supabase integration',
+        check: () => fetch('index.html').then(r => r.text()).then(text => text.includes('supabase.createClient')).catch(() => false)
+      },
+      {
+        id: 'index-load-data',
+        name: 'index.html has loadBusinessData function',
+        check: () => fetch('index.html').then(r => r.text()).then(text => text.includes('loadBusinessData')).catch(() => false)
+      },
+      {
+        id: 'add-client-sql',
+        name: 'add-client.sql template exists',
+        check: () => fetch('add-client.sql').then(r => r.ok).catch(() => false)
+      }
+    ];
+    
+    async function runAllTests() {
+      const container = document.getElementById('tests');
+      container.innerHTML = '<p>Running tests...</p>';
+      
+      for (const test of tests) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const passed = await test.check();
+        
+        const div = document.createElement('div');
+        div.className = 'test-item ' + (passed ? 'pass' : 'fail');
+        div.innerHTML = `
+          <div class="label">${passed ? '✅' : '❌'} ${test.name}</div>
+          <div class="status">File: ${test.id}</div>
+        `;
+        container.appendChild(div);
+      }
+    }
+    
+    // Auto-run on load
+    window.onload = () => setTimeout(runAllTests, 500);
+  </script>
+</body>
+</html>
