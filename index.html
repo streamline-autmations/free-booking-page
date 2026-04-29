@@ -1050,6 +1050,332 @@ document.addEventListener('DOMContentLoaded', async () => {
   setProgress(1);
 });
 
+/* ----------------------------------------------------------------
+   PROGRESS BAR
+   ---------------------------------------------------------------- */
+const CHECK_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+function setProgress(step) {
+  for (let i = 1; i <= 3; i++) {
+    const ps = document.getElementById(`ps-${i}`);
+    const sc = document.getElementById(`sc-${i}`);
+    ps.className = 'progress-step' + (i < step ? ' completed' : i === step ? ' active' : '');
+    sc.innerHTML  = i < step ? CHECK_SVG : String(i);
+  }
+}
+
+/* ----------------------------------------------------------------
+   STEP TRANSITIONS
+   ---------------------------------------------------------------- */
+function goToStep(target) {
+  if (target === S.step) return;
+
+  const from = document.getElementById(`step-${S.step}`);
+  const to   = document.getElementById(`step-${target}`);
+
+  from.classList.add('exiting');
+
+  setTimeout(() => {
+    from.classList.remove('active', 'exiting');
+
+    if (target === 2) renderStep2();
+    if (target === 3) renderStep3();
+
+    to.classList.add('active');
+    S.step = target;
+    setProgress(target);
+
+    const top = document.getElementById('progress-wrap').getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, 200);
+}
+
+/* ----------------------------------------------------------------
+   STEP 1 — Services
+   ---------------------------------------------------------------- */
+function renderServices() {
+  document.getElementById('services-grid').innerHTML = CONFIG.services.map(s => `
+    <div class="svc-card" id="svc-${s.id}" onclick="pickService('${s.id}')">
+      <div class="svc-check">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="svc-name">${s.name}</div>
+      <div class="svc-duration">${s.duration} min</div>
+      <div class="svc-price">${s.price}</div>
+    </div>
+  `).join('');
+}
+
+function pickService(id) {
+  const prev = S.service;
+  S.service = CONFIG.services.find(s => s.id === id);
+
+  if (prev && prev.id !== id) {
+    S.dateISO = null; S.dateObj = null; S.dateLong = '';
+    S.time24  = null; S.time12  = null;
+  }
+
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`svc-${id}`).classList.add('selected');
+
+  setTimeout(() => goToStep(2), 280);
+}
+
+/* ----------------------------------------------------------------
+   STEP 2 — Date strip
+   ---------------------------------------------------------------- */
+function renderStep2() {
+  buildDateStrip();
+
+  if (S.dateISO) {
+    buildTimeSlots();
+    document.getElementById('time-section').style.display = 'block';
+    document.getElementById('continue-btn').classList.toggle('show', !!S.time24);
+  } else {
+    document.getElementById('time-section').style.display = 'none';
+    document.getElementById('continue-btn').classList.remove('show');
+  }
+}
+
+function buildDateStrip() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const pills = [];
+  for (let i = 0; i <= CONFIG.advanceBookingDays; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (!CONFIG.workingDays.includes(d.getDay())) continue;
+    if (i === 0 && !CONFIG.sameDayBooking)          continue;
+    pills.push(d);
+  }
+
+  const strip = document.getElementById('date-strip');
+  strip.innerHTML = pills.map(d => {
+    const iso     = isoDate(d);
+    const sel     = iso === S.dateISO ? ' selected' : '';
+    const blocked = isDayFullyBlocked(d);
+    const bc      = blocked ? ' blocked' : '';
+    const click   = blocked ? '' : `onclick="pickDate('${iso}',${d.getTime()})"`;
+    return `
+      <div class="date-pill${sel}${bc}" id="dp-${iso}" ${click}>
+        <span class="date-day">${shortDay(d)}</span>
+        <span class="date-num">${d.getDate()}</span>
+      </div>`;
+  }).join('');
+}
+
+function pickDate(iso, ts) {
+  S.dateISO  = iso;
+  S.dateObj  = new Date(ts);
+  S.dateLong = longDate(S.dateObj);
+
+  S.time24 = null;
+  S.time12 = null;
+  document.getElementById('continue-btn').classList.remove('show');
+
+  document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('selected'));
+  const pill = document.getElementById(`dp-${iso}`);
+  if (pill) pill.classList.add('selected');
+
+  document.getElementById('time-section').style.display = 'block';
+  buildTimeSlots();
+}
+
+/* ----------------------------------------------------------------
+   STEP 2 — Time slots
+   ---------------------------------------------------------------- */
+function buildTimeSlots() {
+  const { start, end } = CONFIG.workingHours;
+  const interval = CONFIG.slotIntervalMinutes;
+  const duration = S.service ? S.service.duration : 60;
+
+  const slots = [];
+  for (let h = start; h < end; h++) {
+    for (let m = 0; m < 60; m += interval) {
+      const endMin = h * 60 + m + duration;
+      if (Math.floor(endMin / 60) < end || (Math.floor(endMin / 60) === end && endMin % 60 === 0)) {
+        slots.push({ h, m });
+      }
+    }
+  }
+
+  const shortLabel = S.dateObj
+    ? S.dateObj.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' })
+    : '';
+  document.getElementById('time-label').textContent = `Available times${shortLabel ? ' — ' + shortLabel : ''}`;
+
+  const visible = slots.filter(({ h, m }) => !isSlotBlocked(S.dateObj, fmt24(h, m)));
+
+  const grid = document.getElementById('time-grid');
+  if (visible.length === 0) {
+    grid.innerHTML = `<div class="no-slots">No times available for this service on this day.</div>`;
+  } else {
+    grid.innerHTML = visible.map(({ h, m }) => {
+      const t24  = fmt24(h, m);
+      const t12  = fmt12(h, m);
+      const sel  = t24 === S.time24 ? ' selected' : '';
+      return `<div class="time-slot${sel}" id="ts-${t24}" onclick="pickTime('${t24}','${t12}')">${t12}</div>`;
+    }).join('');
+  }
+
+  document.getElementById('avail-note').textContent =
+    `Booking requests are confirmed by ${CONFIG.businessName} — you'll receive a confirmation shortly.`;
+}
+
+function pickTime(t24, t12) {
+  S.time24 = t24;
+  S.time12 = t12;
+
+  document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById(`ts-${t24}`);
+  if (el) el.classList.add('selected');
+
+  document.getElementById('continue-btn').classList.add('show');
+}
+
+/* ----------------------------------------------------------------
+   STEP 3 — Summary card
+   ---------------------------------------------------------------- */
+function renderStep3() {
+  const svc = S.service;
+  document.getElementById('bkg-summary').innerHTML = `
+    <div class="bkg-summary-title">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Your Booking
+    </div>
+    <div class="bkg-row"><span class="bkg-label">Service</span> <span class="bkg-value">${svc.name}</span></div>
+    <div class="bkg-row"><span class="bkg-label">Date</span>    <span class="bkg-value">${S.dateLong}</span></div>
+    <div class="bkg-row"><span class="bkg-label">Time</span>    <span class="bkg-value">${S.time12}</span></div>
+    <div class="bkg-row"><span class="bkg-label">Duration</span><span class="bkg-value">${svc.duration} min</span></div>
+    <div class="bkg-row"><span class="bkg-label">Price</span>   <span class="bkg-value">${svc.price}</span></div>
+  `;
+}
+
+/* ----------------------------------------------------------------
+   FORM VALIDATION
+   ---------------------------------------------------------------- */
+function validate() {
+  let ok = true;
+  let first = null;
+
+  function check(inputId, errId, test) {
+    const el  = document.getElementById(inputId);
+    const err = document.getElementById(errId);
+    const bad = !test(el.value.trim());
+    el.classList.toggle('err', bad);
+    err.classList.toggle('show', bad);
+    if (bad && !first) first = el;
+    if (bad) ok = false;
+  }
+
+  check('f-name',  'e-name',  v => v.length > 0);
+  check('f-email', 'e-email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+  check('f-phone', 'e-phone', v => v.replace(/\D/g,'').length >= 7);
+
+  if (first) { first.scrollIntoView({ behavior:'smooth', block:'center' }); first.focus(); }
+  return ok;
+}
+
+/* ----------------------------------------------------------------
+   FORM SUBMISSION + WEBHOOK
+   ---------------------------------------------------------------- */
+async function handleSubmit(e) {
+  e.preventDefault();
+  if (!validate()) return;
+
+  const btn  = document.getElementById('submit-btn');
+  const txt  = document.getElementById('submit-text');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  txt.textContent = 'Sending…';
+
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const note  = document.getElementById('f-note').value.trim();
+
+  const payload = {
+    businessId:   CONFIG.businessId,
+    businessName: CONFIG.businessName,
+    ownerEmail:   CONFIG.ownerEmail,
+    customer:     { name, email, phone, note },
+    booking: {
+      service:       S.service.name,
+      serviceId:     S.service.id,
+      duration:      S.service.duration,
+      price:         S.service.price,
+      date:          S.dateISO,
+      time:          S.time24,
+      dateFormatted: S.dateLong,
+      timeFormatted: S.time12,
+    },
+    submittedAt: new Date().toISOString(),
+  };
+
+  if (CONFIG.webhookUrl) {
+    try {
+      await fetch(CONFIG.webhookUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('[booking] Webhook error:', err);
+    }
+  }
+
+  showSuccess(name);
+}
+
+/* ----------------------------------------------------------------
+   SUCCESS STATE
+   ---------------------------------------------------------------- */
+function showSuccess(customerName) {
+  document.getElementById('steps-outer').style.display  = 'none';
+  document.getElementById('progress-wrap').style.display = 'none';
+
+  document.getElementById('success-msg').innerHTML =
+    `Thanks ${firstName(customerName)}! We've received your request for ` +
+    `<strong>${S.service.name}</strong> on ${S.dateLong} at ${S.time12}.<br><br>` +
+    `${CONFIG.businessName} will confirm your appointment shortly.`;
+
+  const old = document.querySelector('.success-svg');
+  const fresh = old.cloneNode(true);
+  old.replaceWith(fresh);
+
+  document.getElementById('success-state').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ----------------------------------------------------------------
+   RESET — back to step 1
+   ---------------------------------------------------------------- */
+function resetBooking() {
+  S = { step:1, service:null, dateISO:null, dateObj:null, dateLong:'', time24:null, time12:null };
+
+  document.getElementById('booking-form').reset();
+  document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.classList.remove('err'));
+  document.querySelectorAll('.form-err-msg').forEach(el => el.classList.remove('show'));
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  document.getElementById('submit-text').textContent = 'Confirm Booking Request →';
+
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
+
+  document.getElementById('success-state').classList.remove('show');
+  document.getElementById('steps-outer').style.display   = 'block';
+  document.getElementById('progress-wrap').style.display = 'block';
+
+  renderServices();
+  goToStep(1);
+}
+
 </script>
 </body>
 </html>
