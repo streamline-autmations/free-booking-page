@@ -1316,6 +1316,27 @@ async function handleSubmit(e) {
     submittedAt: new Date().toISOString(),
   };
 
+  // Save booking to Supabase
+  try {
+    await supabaseClient.from('bookings').insert({
+      business_id:    CONFIG.businessId,
+      service_name:   S.service.name,
+      service_id:     String(S.service.id),
+      booking_date:   S.dateISO,
+      booking_time:   S.time24,
+      duration:       S.service.duration,
+      price:          S.service.price,
+      customer_name:  name,
+      customer_email: email,
+      customer_phone: phone,
+      customer_note:  note,
+      status:         'pending',
+    });
+  } catch (err) {
+    console.error('[booking] Supabase insert error:', err);
+  }
+
+  // Fire webhook notification
   if (CONFIG.webhookUrl) {
     try {
       await fetch(CONFIG.webhookUrl, {
