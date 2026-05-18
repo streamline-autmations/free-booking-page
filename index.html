@@ -713,6 +713,19 @@
       <h2 class="success-title">Booking Request Sent!</h2>
       <p  class="success-msg"   id="success-msg"></p>
       <button class="book-again-btn" onclick="resetBooking()">Book Another Appointment</button>
+
+      <div class="streamline-thanks-card" id="streamline-thanks-card">
+        <div class="streamline-thanks-eyebrow">SETUP IN 24 HOURS</div>
+        <h3 class="streamline-thanks-title">Loved how smooth that was?</h3>
+        <p class="streamline-thanks-body">
+          Streamline can build the full site — booking + payments + SMS
+          reminders + your own domain — set up in 24 hours.
+        </p>
+        <a href="https://streamline-automations.agency/" target="_blank"
+           rel="noopener" class="streamline-thanks-btn sl-ref" data-ref="booking-thanks">
+          See packages &rarr;
+        </a>
+      </div>
     </div>
 
   </div>
@@ -727,6 +740,70 @@
     <div class="footer-pow"  id="footer-pow"></div>
   </div>
 </footer>
+
+<!-- ── Streamline self-promo (gated by STREAMLINE_PROMO) ──────────── -->
+<div class="streamline-promo-footer" id="streamline-promo-footer">
+  <span class="streamline-promo-text">
+    Powered by
+    <a href="https://streamline-automations.agency/" target="_blank"
+       rel="noopener" class="streamline-promo-link sl-ref" data-ref="booking">Streamline</a>
+    — built for SA service businesses
+  </span>
+</div>
+
+<div id="streamline-cta-bubble" class="streamline-cta hidden">
+  <a href="https://streamline-automations.agency/" target="_blank"
+     rel="noopener" class="streamline-cta-link sl-ref" data-ref="booking">
+    <span>✨</span><span>Want one like this?</span><span>→</span>
+  </a>
+  <button class="streamline-cta-close" type="button"
+          onclick="this.parentElement.remove()" aria-label="Close">×</button>
+</div>
+
+<style>
+.streamline-promo-footer{width:100%;background:#050508;padding:12px 16px;text-align:center;font-family:'DM Sans',system-ui,sans-serif}
+.streamline-promo-text{font-size:12px;color:rgba(255,255,255,.55);letter-spacing:.02em}
+.streamline-promo-link{color:rgba(255,255,255,.9);font-weight:500;text-decoration:none;border-bottom:1px solid rgba(123,63,228,.4);transition:all .2s ease}
+.streamline-promo-link:hover{color:#FF6B2B;border-bottom-color:#FF6B2B}
+.streamline-cta{position:fixed;bottom:24px;right:24px;z-index:1000;background:linear-gradient(135deg,#7B3FE4 0%,#FF6B2B 100%);border-radius:999px;padding:12px 20px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(123,63,228,.3);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;font-weight:600;color:#fff;animation:slStreamIn .4s ease}
+.streamline-cta.hidden{display:none}
+.streamline-cta-link{color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px}
+.streamline-cta-close{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;margin-left:8px}
+@keyframes slStreamIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+.streamline-thanks-card{margin-top:32px;padding:24px;background:linear-gradient(135deg,rgba(123,63,228,.08) 0%,rgba(255,107,43,.08) 100%);border:1px solid rgba(123,63,228,.2);border-radius:16px;text-align:center}
+.streamline-thanks-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;color:#7B3FE4;margin-bottom:8px}
+.streamline-thanks-title{font-family:'Bebas Neue',sans-serif;font-size:24px;margin:0 0 12px;letter-spacing:.02em}
+.streamline-thanks-body{font-size:14px;color:var(--text-2,#4a4a55);margin:0 0 16px;line-height:1.5}
+.streamline-thanks-btn{display:inline-block;padding:10px 20px;background:#050508;color:#fff;text-decoration:none;border-radius:999px;font-weight:600;font-size:14px;transition:transform .2s ease}
+.streamline-thanks-btn:hover{transform:translateY(-2px)}
+@media(max-width:640px){.streamline-cta{bottom:16px;right:16px;font-size:13px;padding:10px 16px}}
+</style>
+
+<script>
+/* Streamline self-promo wiring — gate, ref-tracking, idle CTA */
+(function () {
+  var STREAMLINE_PROMO = true; // flip false (or wire to business flag) on Tier 2+
+  if (!STREAMLINE_PROMO) {
+    ['streamline-promo-footer','streamline-cta-bubble','streamline-thanks-card']
+      .forEach(function (id) { var el = document.getElementById(id); if (el) el.remove(); });
+    return;
+  }
+  var p = new URLSearchParams(location.search);
+  var slug = p.get('biz') || p.get('business') || 'demo-salon';
+  document.querySelectorAll('a.sl-ref').forEach(function (a) {
+    a.href = 'https://streamline-automations.agency/?ref=' +
+      (a.dataset.ref || 'booking') + '-' + slug;
+  });
+  var active = false;
+  ['click', 'keydown', 'scroll', 'touchstart'].forEach(function (e) {
+    document.addEventListener(e, function () { active = true; }, { once: true, passive: true });
+  });
+  setTimeout(function () {
+    var b = document.getElementById('streamline-cta-bubble');
+    if (b && !active) b.classList.remove('hidden');
+  }, 8000);
+})();
+</script>
 
 <!-- ================================================================
      SCRIPT
@@ -1205,7 +1282,10 @@ function buildTimeSlots() {
     : '';
   document.getElementById('time-label').textContent = `Available times${shortLabel ? ' — ' + shortLabel : ''}`;
 
-  const visible = slots.filter(({ h, m }) => !isSlotBlocked(S.dateObj, fmt24(h, m)));
+  const visible = slots.filter(({ h, m }) =>
+    !isSlotBlocked(S.dateObj, fmt24(h, m)) &&
+    !isSlotTaken(S.dateISO, fmt24(h, m), S.service ? S.service.duration : 60)
+  );
 
   const grid = document.getElementById('time-grid');
   if (visible.length === 0) {

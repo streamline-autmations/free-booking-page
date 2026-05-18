@@ -1,1 +1,14 @@
 .vercel
+
+# Secrets — never commit
+Keys.txt
+SUPABASE_AUTH_LINK.txt
+.env
+.env.*
+
+# Deps / build / temp
+node_modules
+dist
+supabase/.temp
+*.log
+.DS_Store
