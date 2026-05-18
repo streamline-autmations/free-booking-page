@@ -826,8 +826,9 @@ function getBusinessIdFromUrl() {
 }
 
 async function initSupabase() {
-  const SUPABASE_URL = 'https://ighqgqyzlkhmspflbzsh.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaHFncXl6bGtobXNwZmxienNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzg5NzksImV4cCI6MjA5MjkxNDk3OX0.PZdDy9CUCJYqxSUuLFjoWBgNjVnpCYw0LtXPTEwuIK8';
+  // Unified Streamline Supabase project (booking tables in public schema)
+  const SUPABASE_URL = 'https://lpjwfjkgqpgydzozuusj.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwandmamtncXBneWR6b3p1dXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NjczMTMsImV4cCI6MjA4OTI0MzMxM30.tUtsNZxxUfOrmf456coEX38Y5eGuqGxY3S6O3eg2rIA';
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
