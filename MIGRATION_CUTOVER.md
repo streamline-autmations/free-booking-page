@@ -21,15 +21,16 @@ Goal: move the booking page off its own Supabase project
 
 ## 🔴 Security — must fix, do not skip
 
-`admin.html` has a **hardcoded Supabase service-role key** (line ~913),
-committed to GitHub. That key = full DB access, bypasses RLS. Anyone who
-opens the deployed admin page's source has it.
-- Rotate that key in the OLD project's dashboard now (it's burned).
-- Do NOT put any service-role key in `admin.html`. Admin privileged
-  writes must go through the Netlify functions (`admin-auth/-save/-block`)
-  which already read `process.env.SUPABASE_SERVICE_KEY` server-side.
-- `admin.html` was left on the old project on purpose — repoint it only
-  after it's switched to the functions-based path (no embedded key).
+`admin.html` previously had a **hardcoded Supabase service-role key**
+committed to GitHub (old project). **FIXED on this branch:** admin.html
+now uses the anon key only (reads via RLS) and routes PIN auth + every
+write through the Netlify functions (`admin-auth/-save/-block`, which
+hold the service key in `process.env.SUPABASE_SERVICE_KEY` server-side).
+The PIN hash is no longer sent to the browser at all.
+- **Still required:** that old service-role key is burned (it's in git
+  history) — **rotate it in the OLD project's Supabase dashboard.**
+- The Netlify functions need `SUPABASE_SERVICE_KEY` set to the **unified
+  project's** service_role key (cutover step 3) or admin writes fail.
 
 ## Cutover steps (do in order)
 

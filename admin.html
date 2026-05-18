@@ -497,28 +497,101 @@
     .hint { font-size: 12px; color: var(--text-3); margin-top: 10px; line-height: 1.5; }
 
     /* ================================================================
-       BLOCK TIME TAB
+       INTERVAL PRESETS
        ================================================================ */
-    .block-forms {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 22px;
+    .interval-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-
-    .block-card {
+    .interval-btn {
+      padding: 7px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-1);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .interval-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-tint);
+      color: var(--accent);
+      font-weight: 600;
     }
 
-    .block-card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-1);
-      margin-bottom: 12px;
+    /* ================================================================
+       BLOCK CALENDAR
+       ================================================================ */
+    .block-cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
     }
+    .block-cal-nav button {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 30px; height: 30px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-1);
+    }
+    .block-cal-month { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .block-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+    .bcal-dow {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      padding: 4px 0;
+    }
+    .bcal-day {
+      text-align: center;
+      padding: 7px 2px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-1);
+      transition: background 0.15s;
+    }
+    .bcal-day:hover:not(.bcal-empty):not(.bcal-past) { background: var(--accent-tint); color: var(--accent); }
+    .bcal-day.bcal-selected { background: var(--accent); color: #fff; font-weight: 600; }
+    .bcal-day.bcal-past  { color: var(--text-3); cursor: default; }
+    .bcal-day.bcal-empty { cursor: default; }
+    .bcal-day.bcal-today { font-weight: 700; }
+
+    /* time slot grid for blocking */
+    .bst-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .bst-slot {
+      padding: 6px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text-1);
+      transition: all 0.15s;
+    }
+    .bst-slot:hover  { border-color: var(--accent); color: var(--accent); }
+    .bst-slot.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+    /* ================================================================
+       BLOCK TIME TAB (legacy kept for shared styles)
+       ================================================================ */
 
     .block-input {
       width: 100%;
@@ -774,35 +847,43 @@
         <p class="hint">Slots show between these hours based on each service's duration.</p>
       </div>
 
-      <button class="save-hours-btn" onclick="saveHoursAction()">Save Hours</button>
+      <div class="card">
+        <div class="card-title">Booking Slot Length</div>
+        <p class="hint" style="margin-bottom:14px">How long each calendar slot is — affects how many bookings fit in a day.</p>
+        <div class="interval-presets" id="interval-presets"><!-- rendered by JS --></div>
+        <div id="interval-custom-wrap" style="display:none;margin-top:10px">
+          <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:6px">Custom minutes</label>
+          <input type="number" id="interval-custom-val" min="5" max="240" placeholder="e.g. 20"
+            style="width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px" />
+        </div>
+      </div>
+
+      <button class="save-hours-btn" onclick="saveHoursAction()">Save Hours &amp; Slot Length</button>
 
     </div>
 
     <!-- ── BLOCK TIME ──────────────────────────────────────────── -->
     <div id="tab-blocked" class="tab-panel">
 
-      <div class="block-forms">
-
-        <div class="block-card">
-          <div class="block-card-title">📅 Block a full day</div>
-          <input class="block-input" type="date"  id="bd-date"   />
-          <input class="block-input" type="text"  id="bd-reason" placeholder="Reason (optional)" />
-          <button class="block-btn" onclick="blockFullDay()">Block Full Day</button>
-        </div>
-
-        <div class="block-card">
-          <div class="block-card-title">🕐 Block a time slot</div>
-          <input  class="block-input" type="date" id="bs-date"   oninput="populateSlotTimes()" />
-          <select class="block-input" id="bs-time">
-            <option value="">— Select date first —</option>
-          </select>
-          <input class="block-input" type="text"  id="bs-reason" placeholder="Reason (optional)" />
-          <button class="block-btn" onclick="blockSlot()">Block This Slot</button>
-        </div>
-
+      <div class="card">
+        <div class="card-title">📅 Block a Full Day</div>
+        <div id="block-day-cal"><!-- calendar rendered by JS --></div>
+        <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" style="margin-top:10px" />
+        <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()" style="margin-top:8px;display:none">Block Selected Day</button>
       </div>
 
-      <div class="section-row">
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">🕐 Block a Time Slot</div>
+        <div id="block-slot-cal"><!-- calendar rendered by JS --></div>
+        <div id="block-slot-times" style="display:none;margin-top:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px" id="block-slot-label"></div>
+          <div class="bst-grid" id="bst-grid"><!-- time slots --></div>
+          <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" style="margin-top:10px" />
+          <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()" style="margin-top:8px;display:none">Block Selected Slot</button>
+        </div>
+      </div>
+
+      <div class="section-row" style="margin-top:20px">
         <span class="section-label">Blocked Dates &amp; Slots</span>
       </div>
       <div id="blocked-list"><!-- rendered by JS --></div>
@@ -826,13 +907,16 @@
 <script>
 
 /* ----------------------------------------------------------------
-   SUPABASE — uses service role key so admin can write to all tables
+   SUPABASE — ANON key only (read-only via RLS). Every privileged
+   write + PIN auth goes through the server-side Netlify functions
+   (which hold the service key in env). No service key in this file.
    ---------------------------------------------------------------- */
-const SUPABASE_URL = 'https://ighqgqyzlkhmspflbzsh.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaHFncXl6bGtobXNwZmxienNoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzMzODk3OSwiZXhwIjoyMDkyOTE0OTc5fQ.hGZV1l3C-tWAQmR1QybxEUVgLfONLnjsdrJ1nSBsBWA';
+const SUPABASE_URL = 'https://lpjwfjkgqpgydzozuusj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwandmamtncXBneWR6b3p1dXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NjczMTMsImV4cCI6MjA4OTI0MzMxM30.tUtsNZxxUfOrmf456coEX38Y5eGuqGxY3S6O3eg2rIA';
 
 let CONFIG = null;
 let supabaseClient = null;
+let SERVICES = [];
 
 function getBusinessIdFromUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -840,7 +924,27 @@ function getBusinessIdFromUrl() {
 }
 
 async function initSupabase() {
-  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function adminToken() {
+  try { return sessionStorage.getItem(`${PFX()}_token`) || ''; } catch { return ''; }
+}
+
+/* All privileged ops route here → Netlify function → service key (server) */
+async function callFn(name, payload) {
+  try {
+    const res = await fetch(`/.netlify/functions/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, token: adminToken() }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: body.error || `Request failed (${res.status})` };
+    return { data: body };
+  } catch (e) {
+    return { error: (e && e.message) || 'Network error' };
+  }
 }
 
 /* ----------------------------------------------------------------
@@ -854,7 +958,9 @@ async function loadBusinessData() {
   }
 
   const { data: biz, error } = await supabaseClient
-    .from('businesses').select('*').eq('id', bizId).single();
+    .from('businesses')
+    .select('id,name,tagline,logo_url,accent_color,accent_dark,owner_email,phone,working_days,working_hours,slot_interval,advance_days,same_day,webhook_url')
+    .eq('id', bizId).single();
 
   if (error || !biz) {
     showError(`Business "<strong>${bizId}</strong>" not found. Check the URL or contact support.`);
@@ -876,7 +982,6 @@ async function loadBusinessData() {
     advanceBookingDays:  biz.advance_days  || 30,
     sameDayBooking:      biz.same_day !== false,
     webhookUrl:          biz.webhook_url   || '',
-    adminPinHash:        biz.admin_pin_hash,
   };
   return true;
 }
@@ -933,8 +1038,9 @@ function refreshDots() {
 }
 
 async function checkPin() {
-  const hash = await sha256(pin);
-  if (hash === CONFIG.adminPinHash) {
+  const { data, error } = await callFn('admin-auth', { businessId: CONFIG.businessId, pin });
+  if (!error && data && data.token) {
+    sessionStorage.setItem(`${PFX()}_token`, data.token);
     sessionStorage.setItem(`${PFX()}_pin_verified`, 'true');
     openDashboard();
   } else {
@@ -960,6 +1066,7 @@ function openDashboard() {
 }
 
 function logout() {
+  sessionStorage.removeItem(`${PFX()}_token`);
   sessionStorage.removeItem(`${PFX()}_pin_verified`);
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('pin-screen').style.display = 'flex';
@@ -1007,6 +1114,7 @@ async function renderServices() {
     .from('services').select('*').eq('business_id', CONFIG.businessId).order('sort_order');
 
   if (error) { el.innerHTML = '<div class="empty-state">Failed to load services.</div>'; return; }
+  SERVICES = svcs || [];
   if (!svcs || svcs.length === 0) {
     el.innerHTML = '<div class="empty-state">No services yet — click "+ Add Service" to get started.</div>';
     return;
@@ -1060,17 +1168,25 @@ async function saveEdit(id, i) {
   if (!duration || duration < 1) { toast('Duration must be at least 1 min', 'error'); return; }
   if (!price)              { toast('Price is required', 'error');                return; }
 
-  const { error } = await supabaseClient
-    .from('services').update({ name, duration, price: `R${price}` }).eq('id', id);
-
+  const svc = SERVICES.find(s => String(s.id) === String(id));
+  if (svc) { svc.name = name; svc.duration = duration; svc.price = `R${price}`; }
+  const { error } = await saveServices();
   if (error) { toast('Failed to save — try again', 'error'); return; }
   renderServices();
   toast('Service updated ✓');
 }
 
+async function saveServices() {
+  const services = SERVICES.map(s => ({ name: s.name, duration: s.duration, price: s.price }));
+  return await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'services', data: { services },
+  });
+}
+
 async function deleteSvc(id) {
   if (!confirm('Remove this service? This can\'t be undone.')) return;
-  const { error } = await supabaseClient.from('services').delete().eq('id', id);
+  SERVICES = SERVICES.filter(s => String(s.id) !== String(id));
+  const { error } = await saveServices();
   if (error) { toast('Failed to remove — try again', 'error'); return; }
   renderServices();
   toast('Service removed');
@@ -1094,14 +1210,8 @@ async function saveNewService() {
   if (!duration || duration < 1) { toast('Duration must be at least 1 min', 'error'); return; }
   if (!price)              { toast('Price is required', 'error');                return; }
 
-  const { data: existing } = await supabaseClient
-    .from('services').select('sort_order').eq('business_id', CONFIG.businessId)
-    .order('sort_order', { ascending: false }).limit(1);
-  const sortOrder = existing && existing.length > 0 ? (existing[0].sort_order || 0) + 1 : 1;
-
-  const { error } = await supabaseClient.from('services').insert({
-    business_id: CONFIG.businessId, name, duration, price: `R${price}`, sort_order: sortOrder,
-  });
+  SERVICES.push({ name, duration, price: `R${price}` });
+  const { error } = await saveServices();
 
   if (error) { toast('Failed to add — try again', 'error'); return; }
   closeAddForm();
@@ -1128,6 +1238,18 @@ function renderHours() {
 
   document.getElementById('hours-start').value = CONFIG.workingHours.start;
   document.getElementById('hours-end').value   = CONFIG.workingHours.end;
+
+  // Interval presets
+  const presets = [15, 30, 45, 60];
+  const cur = CONFIG.slotIntervalMinutes || 30;
+  const isCustom = !presets.includes(cur);
+  document.getElementById('interval-presets').innerHTML = presets.map(p => `
+    <button class="interval-btn${cur === p ? ' active' : ''}" onclick="selectInterval(${p}, this)">${p} min</button>
+  `).join('') + `<button class="interval-btn${isCustom ? ' active' : ''}" onclick="selectInterval('custom', this)">Custom</button>`;
+  if (isCustom) {
+    document.getElementById('interval-custom-wrap').style.display = 'block';
+    document.getElementById('interval-custom-val').value = cur;
+  }
 }
 
 async function saveHoursAction() {
@@ -1138,10 +1260,10 @@ async function saveHoursAction() {
   if (days.length === 0) { toast('Select at least one working day', 'error'); return; }
   if (start >= end)       { toast('Closing must be after opening', 'error');   return; }
 
-  const { error } = await supabaseClient
-    .from('businesses')
-    .update({ working_days: days, working_hours: { start, end } })
-    .eq('id', CONFIG.businessId);
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'hours',
+    data: { workingDays: days, workingHours: { start, end } },
+  });
 
   if (error) { toast('Failed to save — try again', 'error'); return; }
   CONFIG.workingDays  = days;
@@ -1223,8 +1345,9 @@ async function blockFullDay() {
   const reason = document.getElementById('bd-reason').value.trim();
   if (!date) { toast('Please select a date', 'error'); return; }
 
-  const { error } = await supabaseClient.from('blocked_slots').insert({
-    business_id: CONFIG.businessId, date, type: 'day', reason: reason || null,
+  const { error } = await callFn('admin-block', {
+    businessId: CONFIG.businessId, action: 'add',
+    blockData: { date, type: 'day', reason: reason || null },
   });
 
   if (error) { toast('Failed to block — try again', 'error'); return; }
@@ -1241,8 +1364,9 @@ async function blockSlot() {
   if (!date) { toast('Please select a date', 'error');      return; }
   if (!time) { toast('Please select a time slot', 'error'); return; }
 
-  const { error } = await supabaseClient.from('blocked_slots').insert({
-    business_id: CONFIG.businessId, date, type: 'slot', time, reason: reason || null,
+  const { error } = await callFn('admin-block', {
+    businessId: CONFIG.businessId, action: 'add',
+    blockData: { date, type: 'slot', time, reason: reason || null },
   });
 
   if (error) { toast('Failed to block — try again', 'error'); return; }
@@ -1254,7 +1378,9 @@ async function blockSlot() {
 }
 
 async function removeBlock(id) {
-  const { error } = await supabaseClient.from('blocked_slots').delete().eq('id', id);
+  const { error } = await callFn('admin-block', {
+    businessId: CONFIG.businessId, action: 'remove', blockId: id,
+  });
   if (error) { toast('Failed to remove — try again', 'error'); return; }
   renderBlocked();
   toast('Removed ✓');
