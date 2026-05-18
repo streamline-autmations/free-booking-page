@@ -5,6 +5,8 @@ Keys.txt
 SUPABASE_AUTH_LINK.txt
 .env
 .env.*
+# raw n8n export embeds a service_role key — use n8n/*.sanitized.json
+Streamline Booking System.json
 
 # Deps / build / temp
 node_modules

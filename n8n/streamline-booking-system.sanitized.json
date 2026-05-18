@@ -1,0 +1,208 @@
+{
+  "name": "Streamline Booking System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ecceb4e0-35b2-49ea-9518-5ecbeddae26c",
+      "name": "Booking Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-208, 112],
+      "webhookId": "booking-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"received\", \"message\": \"Booking received\" }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a8b8f641-d033-4956-b25d-2fb562200843",
+      "name": "Respond 200 Immediately",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "streamline.automations.hq@gmail.com",
+        "toEmail": "={{ $('Booking Webhook').item.json.body.ownerEmail }}",
+        "subject": "=New Booking Request — {{ $('Booking Webhook').item.json.body.customer.name }}",
+        "html": "=<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"><style>\nbody{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:24px;}\n.container{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);}\n.header{background:#7B3FE4;padding:24px 28px;}\n.header h1{color:#fff;font-size:20px;font-weight:600;margin:0;}\n.header p{color:rgba(255,255,255,0.75);font-size:14px;margin:4px 0 0;}\n.body{padding:28px;}\n.label{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:4px;}\n.value{font-size:15px;color:#111827;font-weight:500;margin-bottom:16px;}\n.card{background:#f8f5ff;border-left:3px solid #7B3FE4;border-radius:0 8px 8px 0;padding:16px 18px;margin-bottom:20px;}\n.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e9d8fd;font-size:14px;}\n.row:last-child{border-bottom:none;}\n.key{color:#6b7280;}\n.val{font-weight:600;color:#111827;}\n.note{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;font-size:14px;color:#374151;font-style:italic;margin-bottom:20px;}\n.footer{padding:16px 28px;background:#f9fafb;border-top:1px solid #f3f4f6;font-size:12px;color:#9ca3af;}\n</style></head>\n<body>\n<div class=\"container\">\n<div class=\"header\"><h1>New Booking Request 📅</h1><p>{{ $('Booking Webhook').item.json.body.businessName }}</p></div>\n<div class=\"body\">\n<div class=\"label\">Customer</div>\n<div class=\"value\">{{ $('Booking Webhook').item.json.body.customer.name }}</div>\n<div class=\"label\">Contact</div>\n<div class=\"value\">{{ $('Booking Webhook').item.json.body.customer.email }} · {{ $('Booking Webhook').item.json.body.customer.phone }}</div>\n<div class=\"card\">\n<div class=\"row\"><span class=\"key\">Service</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.service }}</span></div>\n<div class=\"row\"><span class=\"key\">Date</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.dateFormatted }}</span></div>\n<div class=\"row\"><span class=\"key\">Time</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.timeFormatted }}</span></div>\n<div class=\"row\"><span class=\"key\">Duration</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.duration }} min</span></div>\n<div class=\"row\"><span class=\"key\">Price</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.price }}</span></div>\n</div>\n{{ $('Booking Webhook').item.json.body.customer.note ? '<div class=\"label\">Customer Note</div><div class=\"note\">\"' + $('Booking Webhook').item.json.body.customer.note + '\"</div>' : '' }}\n<p style=\"font-size:14px;color:#374151;line-height:1.6;\">Please contact <strong>{{ $('Booking Webhook').item.json.body.customer.name }}</strong> to confirm this booking. Reply to their email or WhatsApp them directly.</p>\n</div>\n<div class=\"footer\">Sent by Streamline Automations · Your booking system is running 24/7</div>\n</div></body></html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [176, 112],
+      "id": "8733c375-a568-4782-a1c4-b2be6174bac2",
+      "name": "Send an Email",
+      "credentials": {
+        "smtp": {
+          "id": "cOz8e6I3gQhuTe0o",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "streamline.automations.hq@gmail.com",
+        "toEmail": "={{ $('Booking Webhook').item.json.body.customer.email }}",
+        "subject": "=Booking Request Received — {{ $('Booking Webhook').item.json.body.businessName }}",
+        "html": "=<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"><style>\nbody{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:24px;}\n.container{max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);}\n.header{background:#111827;padding:24px 28px;text-align:center;}\n.header h1{color:#fff;font-size:20px;font-weight:600;margin:0;}\n.header p{color:rgba(255,255,255,0.6);font-size:14px;margin:6px 0 0;}\n.body{padding:28px;}\n.greeting{font-size:16px;color:#111827;font-weight:500;margin-bottom:8px;}\n.sub{font-size:14px;color:#6b7280;line-height:1.6;margin-bottom:24px;}\n.card{background:#f9fafb;border-radius:10px;padding:18px;margin-bottom:24px;}\n.card-title{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:12px;}\n.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:14px;}\n.row:last-child{border-bottom:none;}\n.key{color:#6b7280;}\n.val{font-weight:600;color:#111827;}\n.notice{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:13px;color:#92400e;margin-bottom:20px;line-height:1.5;}\n.footer{padding:16px 28px;background:#f9fafb;border-top:1px solid #f3f4f6;font-size:12px;color:#9ca3af;text-align:center;}\n</style></head>\n<body>\n<div class=\"container\">\n<div class=\"header\"><h1>{{ $('Booking Webhook').item.json.body.businessName }}</h1><p>Booking Request Received</p></div>\n<div class=\"body\">\n<div class=\"greeting\">Hi {{ $('Booking Webhook').item.json.body.customer.name.split(' ')[0] }} 👋</div>\n<div class=\"sub\">Thanks for booking with {{ $('Booking Webhook').item.json.body.businessName }}! We've received your request and will confirm your appointment shortly.</div>\n<div class=\"card\">\n<div class=\"card-title\">Your Booking Details</div>\n<div class=\"row\"><span class=\"key\">Service</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.service }}</span></div>\n<div class=\"row\"><span class=\"key\">Date</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.dateFormatted }}</span></div>\n<div class=\"row\"><span class=\"key\">Time</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.timeFormatted }}</span></div>\n<div class=\"row\"><span class=\"key\">Duration</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.duration }} min</span></div>\n<div class=\"row\"><span class=\"key\">Price</span><span class=\"val\">{{ $('Booking Webhook').item.json.body.booking.price }}</span></div>\n</div>\n<div class=\"notice\">⏳ <strong>Pending confirmation</strong> — {{ $('Booking Webhook').item.json.body.businessName }} will contact you to confirm. Please wait for their message before assuming it's locked in.</div>\n<p style=\"font-size:14px;color:#6b7280;line-height:1.6;\">Questions? Reply to this email and it'll go straight to the salon.</p>\n</div>\n<div class=\"footer\">Booking powered by Streamline Automations</div>\n</div></body></html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [368, 112],
+      "id": "acb1d057-298e-4914-bf12-43684436f3cc",
+      "name": "Send an Email1",
+      "credentials": {
+        "smtp": {
+          "id": "cOz8e6I3gQhuTe0o",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://lpjwfjkgqpgydzozuusj.supabase.co/rest/v1/bookings?business_id=eq.{{ $('Booking Webhook').item.json.body.businessId }}&booking_date=eq.{{ $('Booking Webhook').item.json.body.booking.date }}&booking_time=eq.{{ $('Booking Webhook').item.json.body.booking.time }}&customer_email=eq.{{ $('Booking Webhook').item.json.body.customer.email }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "__SET_IN_N8N_CREDENTIAL__"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer __SET_IN_N8N_CREDENTIAL__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "confirmed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c2d4e6f8-a0b2-4c6e-8a0c-2e4f6a8c0e2f",
+      "name": "Update Booking Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 112],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $('Booking Webhook').item.json.body.submittedAt }}",
+            "Business": "={{ $('Booking Webhook').item.json.body.businessName }}",
+            "Business ID": "={{ $('Booking Webhook').item.json.body.businessId }}",
+            "Customer Name": "={{ $('Booking Webhook').item.json.body.customer.name }}",
+            "Customer Email": "={{ $('Booking Webhook').item.json.body.customer.email }}",
+            "Customer Phone": "={{ $('Booking Webhook').item.json.body.customer.phone }}",
+            "Service": "={{ $('Booking Webhook').item.json.body.booking.service }}",
+            "Date": "={{ $('Booking Webhook').item.json.body.booking.dateFormatted }}",
+            "Time": "={{ $('Booking Webhook').item.json.body.booking.timeFormatted }}",
+            "Duration (min)": "={{ $('Booking Webhook').item.json.body.booking.duration }}",
+            "Price": "={{ $('Booking Webhook').item.json.body.booking.price }}",
+            "Note": "={{ $('Booking Webhook').item.json.body.customer.note }}",
+            "Status": "Pending"
+          }
+        },
+        "options": {}
+      },
+      "id": "50f6420e-5d83-420d-b7c4-b7af7b1a5292",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [608, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Booking Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 Immediately",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Send an Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email1": {
+      "main": [
+        [
+          {
+            "node": "Update Booking Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "53f701dc-8752-4954-86e3-3f20c19e2f42",
+  "meta": {
+    "instanceId": "ea68ba36ca0942af7da3c2dc6d22a13e526fb635f2a177627caaad60d354fa33"
+  },
+  "id": "lWS6b0mdWjShQR3q",
+  "tags": []
+}
