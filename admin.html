@@ -10,6 +10,14 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- PWA -->
+  <meta name="theme-color" content="#7B3FE4" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" id="apple-icon" href="" />
+  <link rel="manifest" id="manifest-link" href="" />
+
   <style>
     /* ================================================================
        CSS VARS — same pattern as index.html, injected by JS from CONFIG
@@ -715,9 +723,84 @@
     .bookings-upsell a:hover { text-decoration: underline; }
 
     /* ================================================================
+       MORE TAB — install / branding / premium upsell
+       ================================================================ */
+    .install-card {
+      background: linear-gradient(135deg, var(--accent), #FF6B2B);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .install-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .install-card p  { font-size: 13px; opacity: 0.92; margin-bottom: 14px; line-height: 1.5; }
+    .install-btn {
+      background: #fff; color: #111827; border: none;
+      border-radius: var(--radius-sm); font-family: inherit;
+      font-weight: 600; font-size: 14px; padding: 11px 18px;
+      cursor: pointer; min-height: 44px;
+    }
+    .ios-steps { font-size: 13px; line-height: 1.7; margin-top: 12px; }
+    .ios-steps strong { font-weight: 600; }
+
+    .brand-field { margin-bottom: 14px; }
+    .brand-field label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text-2); margin-bottom: 6px;
+    }
+
+    .locked-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .locked-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .locked-card:hover  { border-color: var(--accent); }
+    .locked-card:active { transform: scale(0.98); }
+    .lc-lock    { position: absolute; top: 12px; right: 12px; font-size: 13px; opacity: 0.45; }
+    .lc-title   { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 5px; padding-right: 20px; }
+    .lc-benefit { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+    .lc-tag {
+      display: inline-block; margin-top: 10px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      color: var(--accent); background: var(--accent-tint);
+      padding: 3px 8px; border-radius: 20px;
+    }
+
+    .powered { text-align: center; font-size: 12px; color: var(--text-3); margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .powered strong { color: var(--accent); font-weight: 600; }
+
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none; align-items: center; justify-content: center;
+      padding: 24px; z-index: 9998;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface); border-radius: 16px;
+      padding: 26px 24px; max-width: 340px; width: 100%; text-align: center;
+    }
+    .modal-box h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .modal-box p  { font-size: 14px; color: var(--text-2); line-height: 1.6; margin-bottom: 20px; }
+    .modal-wa {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: #25D366; color: #fff; text-decoration: none;
+      font-weight: 600; font-size: 14px; padding: 12px 20px;
+      border-radius: var(--radius-sm); min-height: 46px; width: 100%;
+    }
+    .modal-close { display: block; margin: 14px auto 0; background: none; border: none; color: var(--text-3); font-family: inherit; font-size: 13px; cursor: pointer; }
+
+    /* ================================================================
        RESPONSIVE
        ================================================================ */
     @media (max-width: 520px) {
+      .locked-grid  { grid-template-columns: 1fr; }
       .form-grid    { grid-template-columns: 1fr; }
       .block-forms  { grid-template-columns: 1fr; }
       .hours-grid   { grid-template-columns: 1fr 1fr; }
@@ -780,6 +863,7 @@
     <button class="tab-btn"        onclick="switchTab('hours', this)">Hours</button>
     <button class="tab-btn"        onclick="switchTab('blocked', this)">Block Time</button>
     <button class="tab-btn"        onclick="switchTab('bookings', this)">Bookings</button>
+    <button class="tab-btn"        onclick="switchTab('more', this)">More</button>
   </nav>
 
   <div class="admin-body">
@@ -867,20 +951,17 @@
 
       <div class="card">
         <div class="card-title">📅 Block a Full Day</div>
-        <div id="block-day-cal"><!-- calendar rendered by JS --></div>
-        <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" style="margin-top:10px" />
-        <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()" style="margin-top:8px;display:none">Block Selected Day</button>
+        <input class="block-input" type="date" id="bd-date" />
+        <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" />
+        <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()">Block This Day</button>
       </div>
 
       <div class="card" style="margin-top:16px">
         <div class="card-title">🕐 Block a Time Slot</div>
-        <div id="block-slot-cal"><!-- calendar rendered by JS --></div>
-        <div id="block-slot-times" style="display:none;margin-top:12px">
-          <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px" id="block-slot-label"></div>
-          <div class="bst-grid" id="bst-grid"><!-- time slots --></div>
-          <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" style="margin-top:10px" />
-          <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()" style="margin-top:8px;display:none">Block Selected Slot</button>
-        </div>
+        <input class="block-input" type="date" id="bs-date" onchange="populateSlotTimes()" />
+        <select class="block-input" id="bs-time"><option value="">— Select date first —</option></select>
+        <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" />
+        <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()">Block This Slot</button>
       </div>
 
       <div class="section-row" style="margin-top:20px">
@@ -895,11 +976,60 @@
       <div id="bookings-content"></div>
     </div>
 
+    <!-- ── MORE (install / branding / premium) ───────────────────── -->
+    <div id="tab-more" class="tab-panel">
+
+      <div class="install-card" id="install-card">
+        <h3>📲 Install your booking app</h3>
+        <p>Add this to your home screen so every booking lands on your phone like a real app.</p>
+        <button class="install-btn" id="install-btn" onclick="triggerInstall()">Install App</button>
+        <div class="ios-steps" id="ios-steps" style="display:none">
+          On iPhone: tap the <strong>Share</strong> button, then <strong>Add to Home Screen</strong>.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Branding</div>
+        <div class="brand-field">
+          <label>Business name</label>
+          <input class="block-input" type="text" id="brand-name" style="margin-bottom:0" />
+        </div>
+        <div class="brand-field">
+          <label>Primary colour</label>
+          <input type="color" id="brand-color"
+            style="width:64px;height:44px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
+        </div>
+        <button class="btn-primary" onclick="saveBranding()">Save Branding</button>
+      </div>
+
+      <div class="section-row" style="margin-top:22px">
+        <span class="section-label">Premium — upgrade to unlock</span>
+      </div>
+      <div class="locked-grid" id="locked-grid"><!-- rendered by JS --></div>
+
+      <div class="powered">Powered by <strong>Streamline</strong></div>
+
+    </div>
+
   </div><!-- /admin-body -->
 </div><!-- /dashboard -->
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
+
+<!-- UPSELL MODAL -->
+<div class="modal-overlay" id="upsell-modal" onclick="closeUpsell(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div style="font-size:34px;margin-bottom:6px">🔒</div>
+    <h3 id="upsell-title">Premium feature</h3>
+    <p id="upsell-body"></p>
+    <a class="modal-wa" id="upsell-wa" href="#" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.477-.913z"/></svg>
+      Chat to Christiaan
+    </a>
+    <button class="modal-close" onclick="closeUpsell()">Maybe later</button>
+  </div>
+</div>
 
 <!-- ================================================================
      SCRIPT
@@ -908,8 +1038,8 @@
 
 /* ----------------------------------------------------------------
    SUPABASE — ANON key only (read-only via RLS). Every privileged
-   write + PIN auth goes through the server-side Netlify functions
-   (which hold the service key in env). No service key in this file.
+   write + PIN auth goes through the server-side Vercel functions in
+   /api/* (which hold the service key in env). No service key here.
    ---------------------------------------------------------------- */
 const SUPABASE_URL = 'https://lpjwfjkgqpgydzozuusj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwandmamtncXBneWR6b3p1dXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NjczMTMsImV4cCI6MjA4OTI0MzMxM30.tUtsNZxxUfOrmf456coEX38Y5eGuqGxY3S6O3eg2rIA';
@@ -931,10 +1061,10 @@ function adminToken() {
   try { return sessionStorage.getItem(`${PFX()}_token`) || ''; } catch { return ''; }
 }
 
-/* All privileged ops route here → Netlify function → service key (server) */
+/* All privileged ops route here → Vercel /api function → service key (server) */
 async function callFn(name, payload) {
   try {
-    const res = await fetch(`/.netlify/functions/${name}`, {
+    const res = await fetch(`/api/${name}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, token: adminToken() }),
@@ -1093,6 +1223,7 @@ function renderActiveTab() {
   if (activeTab === 'hours')    renderHours();
   if (activeTab === 'blocked')  renderBlocked();
   if (activeTab === 'bookings') renderBookings();
+  if (activeTab === 'more')     renderMore();
 }
 
 /* ----------------------------------------------------------------
@@ -1387,18 +1518,41 @@ async function removeBlock(id) {
 }
 
 /* ----------------------------------------------------------------
-   BOOKINGS — live view from Supabase
+   BOOKINGS — live view + status management from Supabase
    ---------------------------------------------------------------- */
+const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
+const STATUS_LABEL = { pending:'Pending', confirmed:'Confirmed', completed:'Completed', cancelled:'Cancelled', no_show:'No-show' };
+const STATUS_COLOR = { pending:'#f59e0b', confirmed:'#10b981', completed:'#6366f1', cancelled:'#ef4444', no_show:'#6b7280' };
+
+function weekEndISO() {
+  const d = new Date();
+  d.setDate(d.getDate() + 6);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function cacheBookings(b) { try { localStorage.setItem(`${PFX()}_bookings`, JSON.stringify(b)); } catch {} }
+function loadCachedBookings() { try { return JSON.parse(localStorage.getItem(`${PFX()}_bookings`) || 'null'); } catch { return null; } }
+
 async function renderBookings() {
   const el = document.getElementById('bookings-content');
   el.innerHTML = '<div class="empty-state">Loading bookings…</div>';
 
-  const { data: bookings, error } = await supabaseClient
-    .from('bookings').select('*').eq('business_id', CONFIG.businessId)
-    .order('booking_date', { ascending: false })
-    .order('booking_time', { ascending: false });
+  let bookings = null, error = null, offline = false;
+  try {
+    const r = await supabaseClient
+      .from('bookings').select('*').eq('business_id', CONFIG.businessId)
+      .order('booking_date', { ascending: false })
+      .order('booking_time', { ascending: false });
+    bookings = r.data; error = r.error;
+  } catch (e) { error = e; }
 
-  if (error) { el.innerHTML = '<div class="empty-state">Failed to load bookings.</div>'; return; }
+  if (error || !bookings) {
+    bookings = loadCachedBookings();
+    if (!bookings) { el.innerHTML = '<div class="empty-state">Failed to load bookings. Check your connection.</div>'; return; }
+    offline = true;
+  } else {
+    cacheBookings(bookings);
+  }
 
   if (!bookings || bookings.length === 0) {
     el.innerHTML = `
@@ -1411,14 +1565,30 @@ async function renderBookings() {
   }
 
   const today = todayISO();
-  const statusColor = { pending:'#f59e0b', confirmed:'#10b981', cancelled:'#ef4444' };
+  const weekEnd = weekEndISO();
+  const live = b => b.status !== 'cancelled' && b.status !== 'no_show';
+  const todayCount = bookings.filter(b => b.booking_date === today && live(b)).length;
+  const weekCount  = bookings.filter(b => b.booking_date >= today && b.booking_date <= weekEnd && live(b)).length;
 
-  el.innerHTML = bookings.map(b => {
+  const glance = `
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:var(--accent)">${todayCount}</div>
+        <div style="font-size:12px;color:var(--text-2)">Today</div>
+      </div>
+      <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:var(--accent)">${weekCount}</div>
+        <div style="font-size:12px;color:var(--text-2)">Next 7 days</div>
+      </div>
+    </div>`;
+
+  const cards = bookings.map(b => {
     const d    = new Date(b.booking_date + 'T00:00:00');
     const dfmt = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-    const sc   = statusColor[b.status] || '#6b7280';
+    const sc   = STATUS_COLOR[b.status] || '#6b7280';
+    const opts = BOOKING_STATUSES.map(s => `<option value="${s}"${b.status===s?' selected':''}>${STATUS_LABEL[s]}</option>`).join('');
     return `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;${b.booking_date < today ? 'opacity:0.55' : ''}">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;${b.booking_date < today ? 'opacity:0.6' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
           <div>
             <div style="font-weight:600;font-size:15px">${esc(b.customer_name)}</div>
@@ -1427,12 +1597,182 @@ async function renderBookings() {
             ${b.customer_note ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">"${esc(b.customer_note)}"</div>` : ''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-            <span style="font-size:11px;font-weight:600;color:${sc};background:${sc}18;padding:3px 9px;border-radius:20px">${b.status}</span>
+            <span id="badge-${b.id}" style="font-size:11px;font-weight:600;color:${sc};background:${sc}18;padding:3px 9px;border-radius:20px">${STATUS_LABEL[b.status] || b.status}</span>
             ${b.price ? `<span style="font-size:12px;font-weight:600;color:var(--text-2)">${esc(b.price)}</span>` : ''}
           </div>
         </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-3)">Status</span>
+          <select class="hours-sel" style="min-height:38px;padding:7px 10px;font-size:14px;flex:1" onchange="setBookingStatus('${b.id}', this.value)">${opts}</select>
+        </div>
       </div>`;
   }).join('');
+
+  const banner = offline
+    ? `<div class="empty-state" style="margin-bottom:12px;color:var(--text-2)">📴 Offline — showing your last saved bookings.</div>`
+    : '';
+  el.innerHTML = banner + glance + cards;
+}
+
+async function setBookingStatus(id, status) {
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'booking_status', data: { bookingId: id, status },
+  });
+  if (error) { toast('Failed to update — try again', 'error'); return; }
+  const badge = document.getElementById(`badge-${id}`);
+  if (badge) {
+    const sc = STATUS_COLOR[status] || '#6b7280';
+    badge.textContent = STATUS_LABEL[status] || status;
+    badge.style.color = sc;
+    badge.style.background = sc + '18';
+  }
+  toast('Status updated ✓');
+}
+
+/* ----------------------------------------------------------------
+   MORE TAB — branding (free) + premium upsell (locked)
+   ---------------------------------------------------------------- */
+/* Wording kept consistent with Workflow F's booking-triggered upsell. */
+const LOCKED_FEATURES = [
+  { title: 'Take deposits',        benefit: 'Require a deposit before clients can book — kills no-shows.' },
+  { title: 'Auto reminders',       benefit: 'Automatic WhatsApp + email reminders before every appointment.' },
+  { title: 'Custom domain',        benefit: 'Use your own domain instead of the shared link.' },
+  { title: 'Remove branding',      benefit: 'White-label the page so it\'s fully yours.' },
+  { title: 'Analytics',            benefit: 'See your busiest times, revenue, and repeat clients.' },
+  { title: 'Customer database',    benefit: 'Rebook reminders, birthday offers, marketing to past clients.' },
+  { title: 'Online store',         benefit: 'Sell products, vouchers, and packages online.' },
+  { title: 'Multiple staff',       benefit: 'A separate calendar for each team member.' },
+];
+const STREAMLINE_WA = '27837797935';
+
+function renderMore() {
+  document.getElementById('brand-name').value  = CONFIG.businessName || '';
+  document.getElementById('brand-color').value = (CONFIG.accentColor || '#7B3FE4');
+
+  document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES.map((f, i) => `
+    <div class="locked-card" onclick="openUpsell(${i})">
+      <span class="lc-lock">🔒</span>
+      <div class="lc-title">${esc(f.title)}</div>
+      <div class="lc-benefit">${esc(f.benefit)}</div>
+      <span class="lc-tag">Premium</span>
+    </div>`).join('');
+
+  // Hide the install card once running as an installed app.
+  const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  document.getElementById('install-card').style.display = installed ? 'none' : 'block';
+}
+
+function openUpsell(i) {
+  const f = LOCKED_FEATURES[i];
+  document.getElementById('upsell-title').textContent = f.title;
+  document.getElementById('upsell-body').textContent =
+    `${f.benefit} Want it unlocked for ${CONFIG.businessName}? Chat to Christiaan and he'll sort it.`;
+  const msg = `Hi Christiaan, I'd like to unlock "${f.title}" on my ${CONFIG.businessName} booking app.`;
+  document.getElementById('upsell-wa').href = `https://wa.me/${STREAMLINE_WA}?text=${encodeURIComponent(msg)}`;
+  document.getElementById('upsell-modal').classList.add('open');
+}
+
+function closeUpsell() {
+  // Inner box stops propagation, so overlay clicks + "Maybe later" both land here.
+  document.getElementById('upsell-modal').classList.remove('open');
+}
+
+async function saveBranding() {
+  const name  = document.getElementById('brand-name').value.trim();
+  const color = document.getElementById('brand-color').value;
+  if (!name) { toast('Business name is required', 'error'); return; }
+
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'branding', data: { name, accentColor: color },
+  });
+  if (error) { toast('Failed to save — try again', 'error'); return; }
+
+  CONFIG.businessName = name;
+  CONFIG.accentColor  = color;
+  injectStyle();
+  document.getElementById('admin-title').textContent = name;
+  buildManifest(); // refresh app name + icon colour
+  toast('Branding saved ✓');
+}
+
+/* ----------------------------------------------------------------
+   PWA — dynamic per-business manifest + canvas icons + install + SW
+   ---------------------------------------------------------------- */
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+function triggerInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt = null;
+  } else {
+    // iOS / unsupported: show the manual Add-to-Home-Screen steps.
+    document.getElementById('ios-steps').style.display = 'block';
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function makeIcon(size) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, CONFIG.accentColor || '#7B3FE4');
+  g.addColorStop(1, '#FF6B2B');
+  x.fillStyle = g;
+  roundRect(x, 0, 0, size, size, size * 0.001); // full-bleed so it's maskable-safe
+  x.fillRect(0, 0, size, size);
+  x.fillStyle = '#ffffff';
+  x.font = `bold ${Math.round(size * 0.5)}px DM Sans, Arial, sans-serif`;
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  const letter = ((CONFIG.businessName || 'B').trim()[0] || 'B').toUpperCase();
+  x.fillText(letter, size / 2, size * 0.54);
+  return c.toDataURL('image/png');
+}
+
+function buildManifest() {
+  try {
+    const icon192 = makeIcon(192);
+    const icon512 = makeIcon(512);
+    const manifest = {
+      name: `${CONFIG.businessName} Bookings`,
+      short_name: (CONFIG.businessName || 'Bookings').slice(0, 12),
+      start_url: `/admin?biz=${CONFIG.businessId}`,
+      scope: '/admin',
+      display: 'standalone',
+      background_color: '#ffffff',
+      theme_color: CONFIG.accentColor || '#7B3FE4',
+      icons: [
+        { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      ],
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    document.getElementById('manifest-link').href = URL.createObjectURL(blob);
+    document.getElementById('apple-icon').href = icon192;
+    const tc = document.querySelector('meta[name="theme-color"]');
+    if (tc) tc.setAttribute('content', CONFIG.accentColor || '#7B3FE4');
+  } catch (e) { /* canvas/blob unsupported — app still works, just not installable */ }
+}
+
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 }
 
 /* ----------------------------------------------------------------
@@ -1456,6 +1796,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!ok) return;
 
   injectStyle();
+  buildManifest();
+  registerSW();
   document.getElementById('pin-biz-name').textContent = CONFIG.businessName;
 
   if (sessionStorage.getItem(`${PFX()}_pin_verified`) === 'true') {
