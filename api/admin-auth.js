@@ -7,6 +7,15 @@ module.exports = async (req, res) => {
     return;
   }
 
+  const url = process.env.SUPABASE_URL || '';
+  const key = process.env.SUPABASE_SERVICE_KEY || '';
+  let host = '';
+  try { host = new URL(url).host; } catch {}
+  if (!url || !key) {
+    res.status(500).json({ error: 'Server not configured: SUPABASE_URL / SUPABASE_SERVICE_KEY missing' });
+    return;
+  }
+
   const { businessId, pin } = readBody(req);
   if (!businessId || !pin) {
     res.status(400).json({ error: 'Missing fields' });
@@ -18,13 +27,16 @@ module.exports = async (req, res) => {
     .from('businesses')
     .select('id, admin_pin_hash')
     .eq('id', businessId)
-    .single();
+    .maybeSingle();
 
-  if (error || !business) {
-    res.status(404).json({ error: 'Business not found' });
+  if (error) {
+    res.status(502).json({ error: 'DB error: ' + error.message, project: host });
     return;
   }
-
+  if (!business) {
+    res.status(404).json({ error: 'Business not found', project: host });
+    return;
+  }
   if (sha256(pin) !== business.admin_pin_hash) {
     res.status(401).json({ error: 'Incorrect PIN' });
     return;
