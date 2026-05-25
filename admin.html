@@ -867,20 +867,17 @@
 
       <div class="card">
         <div class="card-title">📅 Block a Full Day</div>
-        <div id="block-day-cal"><!-- calendar rendered by JS --></div>
-        <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" style="margin-top:10px" />
-        <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()" style="margin-top:8px;display:none">Block Selected Day</button>
+        <input class="block-input" type="date" id="bd-date" />
+        <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" />
+        <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()">Block This Day</button>
       </div>
 
       <div class="card" style="margin-top:16px">
         <div class="card-title">🕐 Block a Time Slot</div>
-        <div id="block-slot-cal"><!-- calendar rendered by JS --></div>
-        <div id="block-slot-times" style="display:none;margin-top:12px">
-          <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px" id="block-slot-label"></div>
-          <div class="bst-grid" id="bst-grid"><!-- time slots --></div>
-          <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" style="margin-top:10px" />
-          <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()" style="margin-top:8px;display:none">Block Selected Slot</button>
-        </div>
+        <input class="block-input" type="date" id="bs-date" onchange="populateSlotTimes()" />
+        <select class="block-input" id="bs-time"><option value="">— Select date first —</option></select>
+        <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" />
+        <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()">Block This Slot</button>
       </div>
 
       <div class="section-row" style="margin-top:20px">
@@ -1387,8 +1384,18 @@ async function removeBlock(id) {
 }
 
 /* ----------------------------------------------------------------
-   BOOKINGS — live view from Supabase
+   BOOKINGS — live view + status management from Supabase
    ---------------------------------------------------------------- */
+const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
+const STATUS_LABEL = { pending:'Pending', confirmed:'Confirmed', completed:'Completed', cancelled:'Cancelled', no_show:'No-show' };
+const STATUS_COLOR = { pending:'#f59e0b', confirmed:'#10b981', completed:'#6366f1', cancelled:'#ef4444', no_show:'#6b7280' };
+
+function weekEndISO() {
+  const d = new Date();
+  d.setDate(d.getDate() + 6);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
 async function renderBookings() {
   const el = document.getElementById('bookings-content');
   el.innerHTML = '<div class="empty-state">Loading bookings…</div>';
@@ -1411,14 +1418,30 @@ async function renderBookings() {
   }
 
   const today = todayISO();
-  const statusColor = { pending:'#f59e0b', confirmed:'#10b981', cancelled:'#ef4444' };
+  const weekEnd = weekEndISO();
+  const live = b => b.status !== 'cancelled' && b.status !== 'no_show';
+  const todayCount = bookings.filter(b => b.booking_date === today && live(b)).length;
+  const weekCount  = bookings.filter(b => b.booking_date >= today && b.booking_date <= weekEnd && live(b)).length;
 
-  el.innerHTML = bookings.map(b => {
+  const glance = `
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:var(--accent)">${todayCount}</div>
+        <div style="font-size:12px;color:var(--text-2)">Today</div>
+      </div>
+      <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:26px;font-weight:700;color:var(--accent)">${weekCount}</div>
+        <div style="font-size:12px;color:var(--text-2)">Next 7 days</div>
+      </div>
+    </div>`;
+
+  const cards = bookings.map(b => {
     const d    = new Date(b.booking_date + 'T00:00:00');
     const dfmt = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-    const sc   = statusColor[b.status] || '#6b7280';
+    const sc   = STATUS_COLOR[b.status] || '#6b7280';
+    const opts = BOOKING_STATUSES.map(s => `<option value="${s}"${b.status===s?' selected':''}>${STATUS_LABEL[s]}</option>`).join('');
     return `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;${b.booking_date < today ? 'opacity:0.55' : ''}">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;${b.booking_date < today ? 'opacity:0.6' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
           <div>
             <div style="font-weight:600;font-size:15px">${esc(b.customer_name)}</div>
@@ -1427,12 +1450,33 @@ async function renderBookings() {
             ${b.customer_note ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">"${esc(b.customer_note)}"</div>` : ''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-            <span style="font-size:11px;font-weight:600;color:${sc};background:${sc}18;padding:3px 9px;border-radius:20px">${b.status}</span>
+            <span id="badge-${b.id}" style="font-size:11px;font-weight:600;color:${sc};background:${sc}18;padding:3px 9px;border-radius:20px">${STATUS_LABEL[b.status] || b.status}</span>
             ${b.price ? `<span style="font-size:12px;font-weight:600;color:var(--text-2)">${esc(b.price)}</span>` : ''}
           </div>
         </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-3)">Status</span>
+          <select class="hours-sel" style="min-height:38px;padding:7px 10px;font-size:14px;flex:1" onchange="setBookingStatus('${b.id}', this.value)">${opts}</select>
+        </div>
       </div>`;
   }).join('');
+
+  el.innerHTML = glance + cards;
+}
+
+async function setBookingStatus(id, status) {
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'booking_status', data: { bookingId: id, status },
+  });
+  if (error) { toast('Failed to update — try again', 'error'); return; }
+  const badge = document.getElementById(`badge-${id}`);
+  if (badge) {
+    const sc = STATUS_COLOR[status] || '#6b7280';
+    badge.textContent = STATUS_LABEL[status] || status;
+    badge.style.color = sc;
+    badge.style.background = sc + '18';
+  }
+  toast('Status updated ✓');
 }
 
 /* ----------------------------------------------------------------
