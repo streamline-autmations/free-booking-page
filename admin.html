@@ -908,8 +908,8 @@
 
 /* ----------------------------------------------------------------
    SUPABASE — ANON key only (read-only via RLS). Every privileged
-   write + PIN auth goes through the server-side Netlify functions
-   (which hold the service key in env). No service key in this file.
+   write + PIN auth goes through the server-side Vercel functions in
+   /api/* (which hold the service key in env). No service key here.
    ---------------------------------------------------------------- */
 const SUPABASE_URL = 'https://lpjwfjkgqpgydzozuusj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwandmamtncXBneWR6b3p1dXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NjczMTMsImV4cCI6MjA4OTI0MzMxM30.tUtsNZxxUfOrmf456coEX38Y5eGuqGxY3S6O3eg2rIA';
@@ -931,10 +931,10 @@ function adminToken() {
   try { return sessionStorage.getItem(`${PFX()}_token`) || ''; } catch { return ''; }
 }
 
-/* All privileged ops route here → Netlify function → service key (server) */
+/* All privileged ops route here → Vercel /api function → service key (server) */
 async function callFn(name, payload) {
   try {
-    const res = await fetch(`/.netlify/functions/${name}`, {
+    const res = await fetch(`/api/${name}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, token: adminToken() }),
