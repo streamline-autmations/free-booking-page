@@ -854,22 +854,25 @@
       </svg>
       Booking page
     </a>
-    <div class="admin-title" id="admin-title"></div>
+    <div class="admin-title" id="admin-title">
+      <span id="admin-title-name"></span>
+      <span style="display:inline-block;margin-left:6px;padding:2px 7px;font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-tint);border-radius:10px;letter-spacing:0.5px;text-transform:uppercase;vertical-align:middle">Admin</span>
+    </div>
     <button class="hdr-btn logout" onclick="logout()">Log out</button>
   </header>
 
   <nav class="admin-tabs">
-    <button class="tab-btn active" onclick="switchTab('services', this)">Services</button>
+    <button class="tab-btn active" onclick="switchTab('bookings', this)">Bookings</button>
+    <button class="tab-btn"        onclick="switchTab('services', this)">Services</button>
     <button class="tab-btn"        onclick="switchTab('hours', this)">Hours</button>
-    <button class="tab-btn"        onclick="switchTab('blocked', this)">Block Time</button>
-    <button class="tab-btn"        onclick="switchTab('bookings', this)">Bookings</button>
-    <button class="tab-btn"        onclick="switchTab('more', this)">More</button>
+    <button class="tab-btn"        onclick="switchTab('blocked', this)">Blocks</button>
+    <button class="tab-btn"        onclick="switchTab('more', this)">Premium</button>
   </nav>
 
   <div class="admin-body">
 
     <!-- ── SERVICES ────────────────────────────────────────────── -->
-    <div id="tab-services" class="tab-panel active">
+    <div id="tab-services" class="tab-panel">
 
       <!-- Add service form -->
       <div class="add-form-wrap" id="add-form-wrap">
@@ -976,7 +979,7 @@
     </div>
 
     <!-- ── BOOKINGS ──────────────────────────────────────────────── -->
-    <div id="tab-bookings" class="tab-panel">
+    <div id="tab-bookings" class="tab-panel active">
       <div id="bookings-content"></div>
     </div>
 
@@ -1193,9 +1196,9 @@ async function checkPin() {
 function openDashboard() {
   document.getElementById('pin-screen').style.display = 'none';
   document.getElementById('dashboard').style.display  = 'flex';
-  document.getElementById('admin-title').textContent  = CONFIG.businessName;
+  document.getElementById('admin-title-name').textContent = CONFIG.businessName;
   document.querySelector('.hdr-btn[href="/"]').href   = `index.html?biz=${CONFIG.businessId}`;
-  activeTab = 'services';
+  activeTab = 'bookings';
   renderActiveTab();
 }
 
@@ -1211,7 +1214,7 @@ function logout() {
 /* ----------------------------------------------------------------
    TAB SWITCHING
    ---------------------------------------------------------------- */
-let activeTab = 'services';
+let activeTab = 'bookings';
 
 function switchTab(name, btn) {
   activeTab = name;
@@ -1627,18 +1630,30 @@ async function renderBookings() {
   const today = todayISO();
   const weekEnd = weekEndISO();
   const live = b => b.status !== 'cancelled' && b.status !== 'no_show';
-  const todayCount = bookings.filter(b => b.booking_date === today && live(b)).length;
+  const todayBookings = bookings.filter(b => b.booking_date === today && live(b));
+  const todayCount = todayBookings.length;
   const weekCount  = bookings.filter(b => b.booking_date >= today && b.booking_date <= weekEnd && live(b)).length;
+  const todayRev = todayBookings.reduce((sum, b) => {
+    const n = Number(String(b.price || '').replace(/[^\d.]/g, '')) || 0;
+    return sum + n;
+  }, 0);
+
+  const fmtR = n => n >= 1000 ? `R${(n/1000).toFixed(1)}k` : `R${Math.round(n)}`;
 
   const glance = `
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-      <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
-        <div style="font-size:26px;font-weight:700;color:var(--accent)">${todayCount}</div>
-        <div style="font-size:12px;color:var(--text-2)">Today</div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;border-radius:var(--radius);padding:14px 16px">
+        <div style="font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Today</div>
+        <div style="font-size:28px;font-weight:700;line-height:1.1;margin-top:4px">${todayCount}</div>
+        <div style="font-size:12px;opacity:0.9;margin-top:2px">${fmtR(todayRev)} booked</div>
       </div>
-      <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
-        <div style="font-size:26px;font-weight:700;color:var(--accent)">${weekCount}</div>
-        <div style="font-size:12px;color:var(--text-2)">Next 7 days</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--text-1)">${weekCount}</div>
+        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px">Next 7 days</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--text-1)">${bookings.length}</div>
+        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px">All time</div>
       </div>
     </div>`;
 
@@ -1750,7 +1765,7 @@ async function saveBranding() {
   CONFIG.businessName = name;
   CONFIG.accentColor  = color;
   injectStyle();
-  document.getElementById('admin-title').textContent = name;
+  document.getElementById('admin-title-name').textContent = name;
   buildManifest(); // refresh app name + icon colour
   toast('Branding saved ✓');
 }
