@@ -932,17 +932,21 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Booking Slot Length</div>
-        <p class="hint" style="margin-bottom:14px">How long each calendar slot is — affects how many bookings fit in a day.</p>
+        <div class="card-title">Booking slots every</div>
+        <p class="hint" style="margin-bottom:14px">
+          Customers see appointment start times every X minutes. The service duration
+          determines how long each booking actually takes.
+        </p>
         <div class="interval-presets" id="interval-presets"><!-- rendered by JS --></div>
         <div id="interval-custom-wrap" style="display:none;margin-top:10px">
           <label style="font-size:12px;color:var(--text-2);display:block;margin-bottom:6px">Custom minutes</label>
           <input type="number" id="interval-custom-val" min="5" max="240" placeholder="e.g. 20"
+            oninput="onCustomIntervalInput()"
             style="width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px" />
         </div>
       </div>
 
-      <button class="save-hours-btn" onclick="saveHoursAction()">Save Hours &amp; Slot Length</button>
+      <button class="save-hours-btn" id="save-hours-btn" onclick="saveHoursAction()">Save Hours &amp; Slot Length</button>
 
     </div>
 
@@ -1302,9 +1306,9 @@ async function saveEdit(id, i) {
   const svc = SERVICES.find(s => String(s.id) === String(id));
   if (svc) { svc.name = name; svc.duration = duration; svc.price = `R${price}`; }
   const { error } = await saveServices();
-  if (error) { toast('Failed to save — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   renderServices();
-  toast('Service updated ✓');
+  toast('Saved ✓');
 }
 
 async function saveServices() {
@@ -1318,7 +1322,7 @@ async function deleteSvc(id) {
   if (!confirm('Remove this service? This can\'t be undone.')) return;
   SERVICES = SERVICES.filter(s => String(s.id) !== String(id));
   const { error } = await saveServices();
-  if (error) { toast('Failed to remove — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   renderServices();
   toast('Service removed');
 }
@@ -1344,7 +1348,7 @@ async function saveNewService() {
   SERVICES.push({ name, duration, price: `R${price}` });
   const { error } = await saveServices();
 
-  if (error) { toast('Failed to add — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   closeAddForm();
   renderServices();
   toast('Service added ✓');
@@ -1355,51 +1359,107 @@ async function saveNewService() {
    ---------------------------------------------------------------- */
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
+/* Pending slot-interval choice (lives in renderHours-local state until save). */
+let PENDING_INTERVAL = null;
+
+const INTERVAL_PRESETS = [15, 20, 30, 45, 60];
+
 function renderHours() {
   document.getElementById('day-toggles').innerHTML = DAYS.map((d, i) => `
     <button class="day-toggle${CONFIG.workingDays.includes(i) ? ' on' : ''}"
             data-day="${i}" onclick="this.classList.toggle('on')">${d}</button>
   `).join('');
 
+  // Whole-hour selectors (booking page iterates hours as ints).
   ['hours-start','hours-end'].forEach(id => {
     document.getElementById(id).innerHTML = Array.from({length:24},(_,i) =>
       `<option value="${i}">${String(i).padStart(2,'0')}:00</option>`
     ).join('');
   });
 
-  document.getElementById('hours-start').value = CONFIG.workingHours.start;
-  document.getElementById('hours-end').value   = CONFIG.workingHours.end;
+  const curStart = Math.round(Number(CONFIG.workingHours.start));
+  const curEnd   = Math.round(Number(CONFIG.workingHours.end));
+  document.getElementById('hours-start').value = Number.isFinite(curStart) ? curStart : 9;
+  document.getElementById('hours-end').value   = Number.isFinite(curEnd)   ? curEnd   : 17;
 
   // Interval presets
-  const presets = [15, 30, 45, 60];
-  const cur = CONFIG.slotIntervalMinutes || 30;
-  const isCustom = !presets.includes(cur);
-  document.getElementById('interval-presets').innerHTML = presets.map(p => `
-    <button class="interval-btn${cur === p ? ' active' : ''}" onclick="selectInterval(${p}, this)">${p} min</button>
-  `).join('') + `<button class="interval-btn${isCustom ? ' active' : ''}" onclick="selectInterval('custom', this)">Custom</button>`;
+  const cur = PENDING_INTERVAL || CONFIG.slotIntervalMinutes || 30;
+  PENDING_INTERVAL = cur;
+  const isCustom = !INTERVAL_PRESETS.includes(cur);
+  document.getElementById('interval-presets').innerHTML = INTERVAL_PRESETS.map(p => `
+    <button class="interval-btn${cur === p ? ' active' : ''}" onclick="selectInterval(${p})">${p} min</button>
+  `).join('') + `<button class="interval-btn${isCustom ? ' active' : ''}" onclick="selectInterval('custom')">Custom</button>`;
+  document.getElementById('interval-custom-wrap').style.display = isCustom ? 'block' : 'none';
   if (isCustom) {
-    document.getElementById('interval-custom-wrap').style.display = 'block';
     document.getElementById('interval-custom-val').value = cur;
   }
 }
 
+function selectInterval(val) {
+  if (val === 'custom') {
+    document.getElementById('interval-custom-wrap').style.display = 'block';
+    const inp = document.getElementById('interval-custom-val');
+    if (!inp.value) inp.value = CONFIG.slotIntervalMinutes || 30;
+    const v = parseInt(inp.value, 10);
+    PENDING_INTERVAL = (v >= 5 && v <= 240) ? v : (CONFIG.slotIntervalMinutes || 30);
+    // Mark the Custom pill active.
+    document.querySelectorAll('#interval-presets .interval-btn').forEach((b, i, arr) => {
+      b.classList.toggle('active', i === arr.length - 1);
+    });
+    inp.focus();
+  } else {
+    PENDING_INTERVAL = val;
+    document.getElementById('interval-custom-wrap').style.display = 'none';
+    document.querySelectorAll('#interval-presets .interval-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.trim() === `${val} min`);
+    });
+  }
+}
+
+function onCustomIntervalInput() {
+  const v = parseInt(document.getElementById('interval-custom-val').value, 10);
+  if (v >= 5 && v <= 240) PENDING_INTERVAL = v;
+}
+
 async function saveHoursAction() {
   const days  = [...document.querySelectorAll('.day-toggle.on')].map(b => +b.dataset.day);
-  const start = +document.getElementById('hours-start').value;
-  const end   = +document.getElementById('hours-end').value;
+  const start = parseInt(document.getElementById('hours-start').value, 10);
+  const end   = parseInt(document.getElementById('hours-end').value, 10);
 
-  if (days.length === 0) { toast('Select at least one working day', 'error'); return; }
-  if (start >= end)       { toast('Closing must be after opening', 'error');   return; }
+  if (days.length === 0) { toast("Couldn't save — pick at least one working day", 'error'); return; }
+  if (start >= end)       { toast("Couldn't save — closing must be after opening", 'error');   return; }
+
+  let interval = PENDING_INTERVAL || CONFIG.slotIntervalMinutes || 30;
+  // Re-read custom if visible
+  const customWrap = document.getElementById('interval-custom-wrap');
+  if (customWrap && customWrap.style.display !== 'none') {
+    const v = parseInt(document.getElementById('interval-custom-val').value, 10);
+    if (!(v >= 5 && v <= 240)) { toast("Couldn't save — slot length must be 5-240 min", 'error'); return; }
+    interval = v;
+  }
+
+  const btn = document.getElementById('save-hours-btn');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
 
   const { error } = await callFn('admin-save', {
     businessId: CONFIG.businessId, type: 'hours',
-    data: { workingDays: days, workingHours: { start, end } },
+    data: { workingDays: days, workingHours: { start, end }, slotInterval: interval },
   });
 
-  if (error) { toast('Failed to save — try again', 'error'); return; }
-  CONFIG.workingDays  = days;
-  CONFIG.workingHours = { start, end };
-  toast('Hours saved ✓');
+  btn.disabled = false;
+  btn.textContent = orig;
+
+  if (error) { toast("Couldn't save — " + (error || 'try again'), 'error'); return; }
+
+  // Re-read saved values into CONFIG and re-render so the form reflects what's persisted.
+  CONFIG.workingDays         = days;
+  CONFIG.workingHours        = { start, end };
+  CONFIG.slotIntervalMinutes = interval;
+  PENDING_INTERVAL           = interval;
+  renderHours();
+  toast('Saved ✓');
 }
 
 /* ----------------------------------------------------------------
@@ -1481,7 +1541,7 @@ async function blockFullDay() {
     blockData: { date, type: 'day', reason: reason || null },
   });
 
-  if (error) { toast('Failed to block — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   document.getElementById('bd-date').value   = '';
   document.getElementById('bd-reason').value = '';
   renderBlocked();
@@ -1500,7 +1560,7 @@ async function blockSlot() {
     blockData: { date, type: 'slot', time, reason: reason || null },
   });
 
-  if (error) { toast('Failed to block — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   document.getElementById('bs-date').value   = '';
   document.getElementById('bs-time').innerHTML = '<option value="">— Select date first —</option>';
   document.getElementById('bs-reason').value = '';
@@ -1512,7 +1572,7 @@ async function removeBlock(id) {
   const { error } = await callFn('admin-block', {
     businessId: CONFIG.businessId, action: 'remove', blockId: id,
   });
-  if (error) { toast('Failed to remove — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   renderBlocked();
   toast('Removed ✓');
 }
@@ -1618,7 +1678,7 @@ async function setBookingStatus(id, status) {
   const { error } = await callFn('admin-save', {
     businessId: CONFIG.businessId, type: 'booking_status', data: { bookingId: id, status },
   });
-  if (error) { toast('Failed to update — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
   const badge = document.getElementById(`badge-${id}`);
   if (badge) {
     const sc = STATUS_COLOR[status] || '#6b7280';
@@ -1685,7 +1745,7 @@ async function saveBranding() {
   const { error } = await callFn('admin-save', {
     businessId: CONFIG.businessId, type: 'branding', data: { name, accentColor: color },
   });
-  if (error) { toast('Failed to save — try again', 'error'); return; }
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
 
   CONFIG.businessName = name;
   CONFIG.accentColor  = color;
@@ -1784,7 +1844,8 @@ function toast(msg, type = 'success') {
   el.textContent = msg;
   el.className = `toast ${type} show`;
   clearTimeout(_tt);
-  _tt = setTimeout(() => el.classList.remove('show'), 2600);
+  // 2s for success (per spec), 3.2s for errors so they're readable.
+  _tt = setTimeout(() => el.classList.remove('show'), type === 'error' ? 3200 : 2000);
 }
 
 /* ----------------------------------------------------------------
