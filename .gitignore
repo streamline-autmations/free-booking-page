@@ -1,5 +1,16 @@
 .vercel
 
+# Local dev/agent/IDE config — should never live in this repo
+.agents/
+.github/agents/
+.kilo/
+.n8nac/
+.vscode/
+AGENTS.md
+QUICK_REFERENCE.md
+SETUP_SUMMARY.txt
+SUPABASE_SETUP.md
+
 # Secrets — never commit
 Keys.txt
 SUPABASE_AUTH_LINK.txt
