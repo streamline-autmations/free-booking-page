@@ -34,9 +34,25 @@ module.exports = async (req, res) => {
         if (error) { res.status(500).json({ error: error.message }); return; }
       }
     } else if (type === 'hours') {
+      const patch = { working_days: data.workingDays, working_hours: data.workingHours };
+      // Allow the Hours form to save the slot grid in the same request.
+      if (typeof data.slotInterval === 'number' && data.slotInterval >= 5 && data.slotInterval <= 240) {
+        patch.slot_interval = Math.round(data.slotInterval);
+      }
       const { error } = await supabase
         .from('businesses')
-        .update({ working_days: data.workingDays, working_hours: data.workingHours })
+        .update(patch)
+        .eq('id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'slot_interval') {
+      const v = Number(data && data.slot_interval);
+      if (!Number.isFinite(v) || v < 5 || v > 240) {
+        res.status(400).json({ error: 'slot_interval must be 5-240 minutes' });
+        return;
+      }
+      const { error } = await supabase
+        .from('businesses')
+        .update({ slot_interval: Math.round(v) })
         .eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
     } else if (type === 'branding') {

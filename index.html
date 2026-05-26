@@ -8,27 +8,33 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
     /* ================================================================
        CSS CUSTOM PROPERTIES — overridden at runtime via JS from CONFIG
        ================================================================ */
     :root {
-      --accent:        #c084fc;
-      --accent-dark:   #9333ea;
-      --accent-tint:   rgba(192,132,252,0.07);
-      --accent-focus:  rgba(192,132,252,0.28);
-      --bg:            #fafafa;
+      --accent:        #A8456B;
+      --accent-dark:   #8a3458;
+      --accent-tint:   rgba(168,69,107,0.07);
+      --accent-soft:   rgba(168,69,107,0.14);
+      --accent-focus:  rgba(168,69,107,0.22);
+      --bg:            #FAF8F5;       /* warm off-white */
       --surface:       #ffffff;
-      --border:        #e5e7eb;
-      --text-1:        #111827;
-      --text-2:        #6b7280;
-      --text-3:        #9ca3af;
-      --radius:        12px;
-      --radius-sm:     8px;
-      --shadow:        0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-md:     0 4px 14px rgba(0,0,0,0.09);
+      --neutral:       #F2EEE8;
+      --border:        #E8E2D9;
+      --border-strong: #D9D1C5;
+      --text-1:        #1B1815;
+      --text-2:        #6B6258;
+      --text-3:        #A39A8E;
+      --radius:        16px;
+      --radius-sm:     10px;
+      --shadow:        0 1px 2px rgba(27,24,21,0.04), 0 2px 6px rgba(27,24,21,0.05);
+      --shadow-md:     0 4px 18px rgba(27,24,21,0.08);
+      --shadow-lift:   0 10px 28px rgba(27,24,21,0.10);
+      --serif:         'Cormorant Garamond', Georgia, serif;
+      --ease:          cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     /* ================================================================
@@ -44,43 +50,86 @@
       line-height: 1.6;
       font-size: 15px;
       -webkit-font-smoothing: antialiased;
+      opacity: 0;
+      animation: bodyFade 0.4s var(--ease) 0.05s forwards;
     }
+    @keyframes bodyFade { to { opacity: 1; } }
 
     .container {
-      max-width: 680px;
+      max-width: 720px;
       margin: 0 auto;
-      padding: 0 16px;
+      padding: 0 20px;
     }
 
     /* ================================================================
-       HEADER
+       HERO
        ================================================================ */
     #site-header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 20px 0;
+      padding: 36px 0 12px;
       text-align: center;
     }
 
+    .hero-image {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto 28px;
+      height: 220px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+      background: linear-gradient(135deg, var(--accent-soft) 0%, var(--neutral) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+    }
+    .hero-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .hero-initials {
+      font-family: var(--serif);
+      font-size: 78px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      opacity: 0.85;
+    }
+
     .logo-img {
-      max-width: 140px;
-      max-height: 50px;
+      max-width: 160px;
+      max-height: 60px;
       object-fit: contain;
       display: block;
-      margin: 0 auto;
+      margin: 0 auto 14px;
     }
 
     .biz-name {
-      font-size: 22px;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: -0.3px;
+      font-family: var(--serif);
+      font-size: 40px;
+      font-weight: 500;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+      line-height: 1.1;
     }
 
     .biz-tagline {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-2);
-      margin-top: 3px;
+      margin-top: 8px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    .hero-rule {
+      width: 36px;
+      height: 1px;
+      background: var(--accent);
+      margin: 18px auto 0;
+      opacity: 0.6;
     }
 
     /* ================================================================
@@ -182,10 +231,12 @@
     @keyframes panelOut { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(-18px); } }
 
     .step-heading {
-      font-size: 17px;
-      font-weight: 600;
+      font-family: var(--serif);
+      font-size: 26px;
+      font-weight: 500;
       color: var(--text-1);
-      margin-bottom: 16px;
+      margin-bottom: 22px;
+      letter-spacing: -0.005em;
     }
 
     /* ================================================================
@@ -219,11 +270,11 @@
 
     .svc-card {
       background: var(--surface);
-      border: 1.5px solid var(--border);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px;
+      padding: 22px 20px;
       cursor: pointer;
-      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
+      transition: border-color 0.2s var(--ease), box-shadow 0.25s var(--ease), transform 0.2s var(--ease), background 0.2s var(--ease);
       position: relative;
       overflow: hidden;
       box-shadow: var(--shadow);
@@ -231,13 +282,13 @@
       user-select: none;
     }
 
-    .svc-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-    .svc-card:active { transform: scale(0.98); }
+    .svc-card:hover  { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+    .svc-card:active { transform: translateY(-1px); }
 
     .svc-card.selected {
       border-color: var(--accent);
-      border-width: 2px;
       background: var(--accent-tint);
+      box-shadow: var(--shadow-lift);
     }
 
     .svc-check {
@@ -258,9 +309,9 @@
     .svc-card.selected .svc-check { opacity: 1; transform: scale(1); }
     .svc-check svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 2.5; fill: none; }
 
-    .svc-name     { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 5px; padding-right: 22px; line-height: 1.3; }
-    .svc-duration { font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
-    .svc-price    { font-size: 15px; font-weight: 600; color: var(--accent); }
+    .svc-name     { font-family: var(--serif); font-size: 21px; font-weight: 500; color: var(--text-1); margin-bottom: 6px; padding-right: 24px; line-height: 1.2; letter-spacing: -0.005em; }
+    .svc-duration { font-size: 12px; color: var(--text-3); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 500; }
+    .svc-price    { font-size: 16px; font-weight: 600; color: var(--accent); font-feature-settings: 'tnum'; }
 
     /* ================================================================
        STEP 2 — DATE STRIP
@@ -268,10 +319,10 @@
     .section-label {
       font-size: 11px;
       font-weight: 600;
-      color: var(--text-2);
+      color: var(--text-3);
       text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 10px;
+      letter-spacing: 0.9px;
+      margin-bottom: 14px;
     }
 
     .date-strip {
@@ -287,25 +338,25 @@
 
     .date-pill {
       flex: 0 0 auto;
-      width: 62px;
-      padding: 10px 6px;
+      width: 64px;
+      padding: 12px 6px 14px;
       border-radius: var(--radius-sm);
-      border: 1.5px solid var(--border);
+      border: 1px solid var(--border);
       background: var(--surface);
       text-align: center;
       cursor: pointer;
       scroll-snap-align: start;
-      transition: border-color 0.2s, background 0.2s, color 0.2s;
+      transition: border-color 0.2s var(--ease), background 0.2s var(--ease), color 0.2s var(--ease), transform 0.15s var(--ease);
       box-shadow: var(--shadow);
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
 
-    .date-pill:hover { border-color: var(--accent); }
-    .date-pill.selected { background: var(--accent); border-color: var(--accent); }
+    .date-pill:hover    { border-color: var(--accent); transform: translateY(-1px); }
+    .date-pill.selected { background: var(--accent); border-color: var(--accent); box-shadow: var(--shadow-md); }
 
-    .date-day { font-size: 10px; font-weight: 500; display: block; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-2); margin-bottom: 3px; }
-    .date-num { font-size: 18px; font-weight: 600; display: block; color: var(--text-1); }
+    .date-day { font-size: 10px; font-weight: 600; display: block; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-3); margin-bottom: 4px; }
+    .date-num { font-family: var(--serif); font-size: 22px; font-weight: 500; display: block; color: var(--text-1); line-height: 1; }
 
     .date-pill.selected .date-day { color: rgba(255,255,255,0.82); }
     .date-pill.selected .date-num { color: #fff; }
@@ -329,27 +380,35 @@
     }
 
     .time-slot {
-      padding: 11px 6px;
+      padding: 12px 6px;
       text-align: center;
       border-radius: var(--radius-sm);
-      border: 1.5px solid var(--border);
+      border: 1px solid var(--border);
       background: var(--surface);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--text-1);
-      transition: all 0.15s ease;
+      transition: all 0.2s var(--ease);
       box-shadow: var(--shadow);
-      min-height: 44px;
+      min-height: 46px;
       display: flex;
       align-items: center;
       justify-content: center;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+      font-feature-settings: 'tnum';
     }
 
-    .time-slot:hover { border-color: var(--accent); color: var(--accent); }
-    .time-slot.selected { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .time-slot:hover    { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .time-slot.selected { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; box-shadow: var(--shadow-md); }
+    .time-slot.unavailable {
+      opacity: 0.4;
+      text-decoration: line-through;
+      cursor: not-allowed;
+      pointer-events: none;
+      background: var(--neutral);
+    }
 
     .no-slots {
       grid-column: 1 / -1;
@@ -374,7 +433,7 @@
        ================================================================ */
     .continue-btn {
       width: 100%;
-      padding: 14px;
+      padding: 16px;
       background: var(--accent);
       color: #fff;
       border: none;
@@ -383,14 +442,16 @@
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background 0.2s;
-      margin-top: 18px;
-      min-height: 48px;
+      transition: background 0.2s var(--ease), transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+      margin-top: 22px;
+      min-height: 52px;
       display: none;
+      letter-spacing: 0.02em;
+      box-shadow: 0 6px 18px var(--accent-soft);
     }
 
     .continue-btn.show { display: block; }
-    .continue-btn:hover { background: var(--accent-dark); }
+    .continue-btn:hover { background: var(--accent-dark); transform: translateY(-1px); }
 
     /* ================================================================
        STEP 3 — BOOKING SUMMARY
@@ -437,16 +498,16 @@
     .form-input,
     .form-textarea {
       width: 100%;
-      padding: 12px 14px;
-      border: 1.5px solid var(--border);
+      padding: 14px 16px;
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       font-family: inherit;
       font-size: 16px; /* 16px = prevents iOS auto-zoom */
       color: var(--text-1);
       background: var(--surface);
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
       outline: none;
-      min-height: 48px;
+      min-height: 52px;
       -webkit-appearance: none;
     }
 
@@ -479,26 +540,28 @@
        ================================================================ */
     .submit-btn {
       width: 100%;
-      padding: 16px;
+      padding: 18px;
       background: var(--accent);
       color: #fff;
       border: none;
       border-radius: var(--radius);
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background 0.2s, opacity 0.2s;
-      min-height: 52px;
+      transition: background 0.2s var(--ease), transform 0.15s var(--ease), box-shadow 0.2s var(--ease), opacity 0.2s;
+      min-height: 56px;
       margin-top: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 6px 18px var(--accent-soft);
     }
+    .submit-btn:hover:not(:disabled) { background: var(--accent-dark); transform: translateY(-1px); }
 
-    .submit-btn:hover:not(:disabled) { background: var(--accent-dark); }
-    .submit-btn:disabled { opacity: 0.68; cursor: not-allowed; }
+    .submit-btn:disabled { opacity: 0.68; cursor: not-allowed; transform: none; }
 
     .spinner {
       width: 18px;
@@ -549,7 +612,7 @@
 
     @keyframes ck-draw { 100% { stroke-dashoffset: 0; } }
 
-    .success-title   { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+    .success-title   { font-family: var(--serif); font-size: 32px; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.01em; }
     .success-msg     { font-size: 15px; color: var(--text-2); line-height: 1.65; margin-bottom: 28px; max-width: 360px; margin-left: auto; margin-right: auto; }
 
     .book-again-btn {
@@ -575,25 +638,30 @@
        ================================================================ */
     footer {
       border-top: 1px solid var(--border);
-      padding: 20px 0;
+      padding: 24px 0 32px;
       text-align: center;
+      margin-top: 40px;
     }
 
-    .footer-biz { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; }
+    .footer-biz   { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
     .footer-phone { color: var(--text-3); }
-    .footer-pow   { font-size: 12px; color: var(--text-3); }
-    .footer-pow a { color: var(--text-2); text-decoration: none; font-weight: 500; transition: color 0.2s; }
-    .footer-pow a:hover { color: var(--accent); }
+    .footer-pow   { font-size: 11px; color: var(--text-3); letter-spacing: 0.02em; }
+    .footer-pow a { color: var(--text-3); text-decoration: none; font-weight: 500; transition: color 0.2s; border-bottom: 1px solid transparent; }
+    .footer-pow a:hover { color: var(--text-2); border-bottom-color: var(--border-strong); }
 
     /* ================================================================
        MOBILE OVERRIDES
        ================================================================ */
-    @media (max-width: 480px) {
-      .services-grid { grid-template-columns: 1fr; }
-      .time-grid     { grid-template-columns: repeat(3, 1fr); }
-      main           { padding: 16px 0 100px; }
-      #site-header   { padding: 14px 0; }
-      .biz-name      { font-size: 20px; }
+    @media (max-width: 540px) {
+      .services-grid  { grid-template-columns: 1fr; }
+      .time-grid      { grid-template-columns: repeat(3, 1fr); }
+      main            { padding: 20px 0 80px; }
+      #site-header    { padding: 24px 0 8px; }
+      .hero-image     { height: 170px; margin-bottom: 22px; border-radius: var(--radius-sm); }
+      .hero-initials  { font-size: 56px; }
+      .biz-name       { font-size: 32px; }
+      .step-heading   { font-size: 22px; }
+      .success-title  { font-size: 26px; }
     }
 
     @media (max-width: 360px) {
@@ -610,6 +678,8 @@
 <header id="site-header">
   <div class="container" id="header-inner"></div>
 </header>
+
+<div class="container" id="hero-image-wrap"></div>
 
 <!-- ================================================================
      MAIN
@@ -713,19 +783,6 @@
       <h2 class="success-title">Booking Request Sent!</h2>
       <p  class="success-msg"   id="success-msg"></p>
       <button class="book-again-btn" onclick="resetBooking()">Book Another Appointment</button>
-
-      <div class="streamline-thanks-card" id="streamline-thanks-card">
-        <div class="streamline-thanks-eyebrow">SETUP IN 24 HOURS</div>
-        <h3 class="streamline-thanks-title">Loved how smooth that was?</h3>
-        <p class="streamline-thanks-body">
-          Streamline can build the full site — booking + payments + SMS
-          reminders + your own domain — set up in 24 hours.
-        </p>
-        <a href="https://streamline-automations.agency/" target="_blank"
-           rel="noopener" class="streamline-thanks-btn sl-ref" data-ref="booking-thanks">
-          See packages &rarr;
-        </a>
-      </div>
     </div>
 
   </div>
@@ -737,73 +794,13 @@
 <footer>
   <div class="container">
     <div class="footer-biz"  id="footer-biz"></div>
-    <div class="footer-pow"  id="footer-pow"></div>
+    <div class="footer-pow">
+      Booking by <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">Streamline</a>
+      &middot; streamline.automations
+    </div>
   </div>
 </footer>
 
-<!-- ── Streamline self-promo (gated by STREAMLINE_PROMO) ──────────── -->
-<div class="streamline-promo-footer" id="streamline-promo-footer">
-  <span class="streamline-promo-text">
-    Powered by
-    <a href="https://streamline-automations.agency/" target="_blank"
-       rel="noopener" class="streamline-promo-link sl-ref" data-ref="booking">Streamline</a>
-    — built for SA service businesses
-  </span>
-</div>
-
-<div id="streamline-cta-bubble" class="streamline-cta hidden">
-  <a href="https://streamline-automations.agency/" target="_blank"
-     rel="noopener" class="streamline-cta-link sl-ref" data-ref="booking">
-    <span>✨</span><span>Want one like this?</span><span>→</span>
-  </a>
-  <button class="streamline-cta-close" type="button"
-          onclick="this.parentElement.remove()" aria-label="Close">×</button>
-</div>
-
-<style>
-.streamline-promo-footer{width:100%;background:#050508;padding:12px 16px;text-align:center;font-family:'DM Sans',system-ui,sans-serif}
-.streamline-promo-text{font-size:12px;color:rgba(255,255,255,.55);letter-spacing:.02em}
-.streamline-promo-link{color:rgba(255,255,255,.9);font-weight:500;text-decoration:none;border-bottom:1px solid rgba(123,63,228,.4);transition:all .2s ease}
-.streamline-promo-link:hover{color:#FF6B2B;border-bottom-color:#FF6B2B}
-.streamline-cta{position:fixed;bottom:24px;right:24px;z-index:1000;background:linear-gradient(135deg,#7B3FE4 0%,#FF6B2B 100%);border-radius:999px;padding:12px 20px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(123,63,228,.3);font-family:'DM Sans',system-ui,sans-serif;font-size:14px;font-weight:600;color:#fff;animation:slStreamIn .4s ease}
-.streamline-cta.hidden{display:none}
-.streamline-cta-link{color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px}
-.streamline-cta-close{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;margin-left:8px}
-@keyframes slStreamIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
-.streamline-thanks-card{margin-top:32px;padding:24px;background:linear-gradient(135deg,rgba(123,63,228,.08) 0%,rgba(255,107,43,.08) 100%);border:1px solid rgba(123,63,228,.2);border-radius:16px;text-align:center}
-.streamline-thanks-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;color:#7B3FE4;margin-bottom:8px}
-.streamline-thanks-title{font-family:'Bebas Neue',sans-serif;font-size:24px;margin:0 0 12px;letter-spacing:.02em}
-.streamline-thanks-body{font-size:14px;color:var(--text-2,#4a4a55);margin:0 0 16px;line-height:1.5}
-.streamline-thanks-btn{display:inline-block;padding:10px 20px;background:#050508;color:#fff;text-decoration:none;border-radius:999px;font-weight:600;font-size:14px;transition:transform .2s ease}
-.streamline-thanks-btn:hover{transform:translateY(-2px)}
-@media(max-width:640px){.streamline-cta{bottom:16px;right:16px;font-size:13px;padding:10px 16px}}
-</style>
-
-<script>
-/* Streamline self-promo wiring — gate, ref-tracking, idle CTA */
-(function () {
-  var STREAMLINE_PROMO = true; // flip false (or wire to business flag) on Tier 2+
-  if (!STREAMLINE_PROMO) {
-    ['streamline-promo-footer','streamline-cta-bubble','streamline-thanks-card']
-      .forEach(function (id) { var el = document.getElementById(id); if (el) el.remove(); });
-    return;
-  }
-  var p = new URLSearchParams(location.search);
-  var slug = p.get('biz') || p.get('business') || 'demo-salon';
-  document.querySelectorAll('a.sl-ref').forEach(function (a) {
-    a.href = 'https://streamline-automations.agency/?ref=' +
-      (a.dataset.ref || 'booking') + '-' + slug;
-  });
-  var active = false;
-  ['click', 'keydown', 'scroll', 'touchstart'].forEach(function (e) {
-    document.addEventListener(e, function () { active = true; }, { once: true, passive: true });
-  });
-  setTimeout(function () {
-    var b = document.getElementById('streamline-cta-bubble');
-    if (b && !active) b.classList.remove('hidden');
-  }, 8000);
-})();
-</script>
 
 <!-- ================================================================
      SCRIPT
@@ -920,8 +917,9 @@ async function loadBusinessData() {
   CONFIG = {
     businessId: business.id,
     businessName: business.name,
-    tagline: business.tagline || '',
+    tagline: business.tagline || 'Book your appointment online',
     logoUrl: business.logo_url || '',
+    imageUrl: business.image_url || '',
     accentColor: business.accent_color || '#c084fc',
     accentColorDark: business.accent_dark || '#9333ea',
     ownerEmail: business.owner_email || '',
@@ -952,6 +950,7 @@ function useDefaultConfig() {
     businessName: "True Reflection Nails",
     tagline: "Professional nail care in Sandton",
     logoUrl: "",
+    imageUrl: "",
     accentColor: "#c084fc",
     accentColorDark: "#9333ea",
     ownerEmail: "owner@salon.co.za",
@@ -1109,16 +1108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   r.style.setProperty('--accent-focus', hexRgba(CONFIG.accentColor, 0.26));
   document.title = `${CONFIG.businessName} — Book Online`;
 
-  // Re-render header and footer
-  const h = document.getElementById('header-inner');
-  if (CONFIG.logoUrl) {
-    h.innerHTML = `<img class="logo-img" src="${CONFIG.logoUrl}" alt="${CONFIG.businessName}" />`;
-  } else {
-    h.innerHTML = `<div class="biz-name">${CONFIG.businessName}</div>`;
-  }
-  if (CONFIG.tagline) {
-    h.innerHTML += `<div class="biz-tagline">${CONFIG.tagline}</div>`;
-  }
+  renderHero();
 
   const biz = document.getElementById('footer-biz');
   biz.innerHTML = CONFIG.businessName + (CONFIG.phone ? ` · <span class="footer-phone">${CONFIG.phone}</span>` : '');
@@ -1127,6 +1117,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderServices();
   setProgress(1);
 });
+
+/* ----------------------------------------------------------------
+   HERO — image (or accent-tinted gradient placeholder) + name + tagline
+   ---------------------------------------------------------------- */
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getInitials(name) {
+  const parts = String(name || 'B').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'B';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderHero() {
+  // Header block — name + tagline (logo replaces name if present).
+  const h = document.getElementById('header-inner');
+  if (CONFIG.logoUrl) {
+    h.innerHTML = `<img class="logo-img" src="${escapeHtml(CONFIG.logoUrl)}" alt="${escapeHtml(CONFIG.businessName)}" />`;
+  } else {
+    h.innerHTML = `<div class="biz-name">${escapeHtml(CONFIG.businessName)}</div>`;
+  }
+  if (CONFIG.tagline) {
+    h.innerHTML += `<div class="biz-tagline">${escapeHtml(CONFIG.tagline)}</div>`;
+  }
+  h.innerHTML += `<div class="hero-rule"></div>`;
+
+  // Hero image (or initials placeholder)
+  const wrap = document.getElementById('hero-image-wrap');
+  if (CONFIG.imageUrl) {
+    wrap.innerHTML = `<div class="hero-image"><img src="${escapeHtml(CONFIG.imageUrl)}" alt="${escapeHtml(CONFIG.businessName)}" loading="lazy" /></div>`;
+  } else {
+    wrap.innerHTML = `<div class="hero-image"><span class="hero-initials">${escapeHtml(getInitials(CONFIG.businessName))}</span></div>`;
+  }
+}
 
 /* ----------------------------------------------------------------
    PROGRESS BAR
