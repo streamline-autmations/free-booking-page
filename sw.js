@@ -6,7 +6,7 @@
 //   - Supabase + /api/* → never cached, always network.
 // Bump CACHE_VERSION on any sw.js change to force the activate hook to drop
 // the old cache from previously-installed PWAs.
-const CACHE_VERSION = 'sa-admin-v3';
+const CACHE_VERSION = 'sa-admin-v4';
 const CACHE = CACHE_VERSION;
 
 // Seed cache with the app shell so offline first-paint still works.

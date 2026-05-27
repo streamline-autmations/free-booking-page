@@ -804,7 +804,29 @@
       .form-grid    { grid-template-columns: 1fr; }
       .block-forms  { grid-template-columns: 1fr; }
       .hours-grid   { grid-template-columns: 1fr 1fr; }
+      /* Tighten container padding so nothing bleeds past the viewport. */
+      #dashboard, main, .admin-tabs, .admin-header { padding-left: 14px; padding-right: 14px; }
+      .admin-header { padding-top: 14px; padding-bottom: 12px; gap: 10px; }
+      .admin-title  { font-size: 16px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .hdr-btn      { font-size: 12px; padding: 7px 10px; }
+      .admin-tabs   { gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; flex-wrap: nowrap; scrollbar-width: none; }
+      .admin-tabs::-webkit-scrollbar { display: none; }
+      .tab-btn      { font-size: 13px; padding: 8px 12px; white-space: nowrap; flex-shrink: 0; }
+      .card         { padding: 16px 14px; }
+      .card-title   { font-size: 15px; }
+      .section-row  { gap: 8px; flex-wrap: wrap; }
+      .btn-primary, .save-hours-btn, .block-btn { width: 100%; min-height: 44px; padding: 11px 14px; font-size: 14px; }
+      .day-toggles  { flex-wrap: wrap; gap: 6px; }
+      .day-tog      { min-width: 38px; padding: 7px 10px; font-size: 12px; }
+      .hours-sel    { min-height: 44px; font-size: 14px; }
+      .block-input  { min-height: 44px; font-size: 14px; padding: 10px 12px; }
+      .interval-presets { flex-wrap: wrap; gap: 6px; }
+      .pin-btn, .num-btn { min-height: 56px; }
+      .numpad       { gap: 10px; }
+      .pin-wrap     { max-width: 280px; }
     }
+    /* Hard belt-and-braces: no element should EVER cause horizontal scroll. */
+    html, body { overflow-x: hidden; max-width: 100%; }
   </style>
 </head>
 
@@ -846,6 +868,21 @@
      DASHBOARD
      ================================================================ -->
 <div id="dashboard" style="display:none">
+
+  <!-- Sticky install banner. Shown when the OS reports the app is installable
+       (Android Chrome via beforeinstallprompt) OR iOS Safari (manual A2HS).
+       Auto-hides for 7 days when dismissed, forever once the app is installed. -->
+  <div id="install-banner" style="display:none;position:sticky;top:0;z-index:50;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,0.08)">
+    <div style="display:flex;align-items:center;gap:12px;max-width:560px;margin:0 auto">
+      <div style="flex-shrink:0;width:36px;height:36px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:18px">S</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;line-height:1.25">Install the Streamline app</div>
+        <div style="font-size:12px;opacity:0.92;line-height:1.35" id="install-banner-sub">Every booking lands on your phone like a real app.</div>
+      </div>
+      <button id="install-banner-btn" onclick="triggerInstall()" style="flex-shrink:0;background:#fff;color:var(--accent);border:none;border-radius:8px;font-weight:700;font-size:13px;padding:9px 14px;cursor:pointer">Install</button>
+      <button onclick="dismissInstallBanner()" aria-label="Dismiss" style="flex-shrink:0;background:transparent;color:#fff;border:none;font-size:20px;line-height:1;cursor:pointer;padding:4px;opacity:0.85">×</button>
+    </div>
+  </div>
 
   <header class="admin-header">
     <a class="hdr-btn" href="/">
@@ -1250,6 +1287,7 @@ function openDashboard() {
   document.querySelector('.hdr-btn[href="/"]').href   = `index.html?biz=${CONFIG.businessId}`;
   activeTab = 'bookings';
   renderActiveTab();
+  maybeShowIosInstall();
 }
 
 function logout() {
@@ -1906,19 +1944,68 @@ async function saveBranding() {
    ---------------------------------------------------------------- */
 let deferredInstallPrompt = null;
 
+const INSTALL_DISMISS_KEY = 'sa_install_banner_dismissed_at';
+const INSTALL_DISMISS_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function installBannerDismissed() {
+  try {
+    const ts = parseInt(localStorage.getItem(INSTALL_DISMISS_KEY) || '0', 10);
+    return ts && (Date.now() - ts) < INSTALL_DISMISS_TTL;
+  } catch { return false; }
+}
+function showInstallBanner(reason) {
+  if (isStandalone() || installBannerDismissed()) return;
+  const el = document.getElementById('install-banner');
+  if (!el) return;
+  el.style.display = 'block';
+  const sub = document.getElementById('install-banner-sub');
+  const btn = document.getElementById('install-banner-btn');
+  if (reason === 'ios') {
+    if (sub) sub.textContent = 'Tap Share, then Add to Home Screen.';
+    if (btn) btn.textContent = 'How';
+  }
+}
+function dismissInstallBanner() {
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
+  const el = document.getElementById('install-banner');
+  if (el) el.style.display = 'none';
+}
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
+  showInstallBanner('android');
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const el = document.getElementById('install-banner');
+  if (el) el.style.display = 'none';
 });
 
 function triggerInstall() {
   if (deferredInstallPrompt) {
     deferredInstallPrompt.prompt();
     deferredInstallPrompt = null;
-  } else {
-    // iOS / unsupported: show the manual Add-to-Home-Screen steps.
-    document.getElementById('ios-steps').style.display = 'block';
+    return;
   }
+  // iOS Safari / Firefox / older Chrome: no native prompt. Show the manual steps.
+  document.getElementById('ios-steps').style.display = 'block';
+  // Scroll the More-tab install card into view if it's around.
+  const c = document.getElementById('install-card');
+  if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Try to show the iOS install banner once the dashboard is up. Android browsers
+// that ARE installable will overwrite this when beforeinstallprompt fires.
+function maybeShowIosInstall() {
+  if (isIOS() && !isStandalone()) showInstallBanner('ios');
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -2008,7 +2095,33 @@ function toast(msg, type = 'success') {
 /* ----------------------------------------------------------------
    INIT
    ---------------------------------------------------------------- */
+// Panic button for stuck installs. Visiting /admin?reset=1 unregisters every
+// service worker, deletes every cache, clears storage, and reloads. Use this
+// when an installed PWA is pinned to an old build and won't update.
+async function panicReset() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if (typeof caches !== 'undefined') {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    try { localStorage.clear(); } catch {}
+    try { sessionStorage.clear(); } catch {}
+  } catch {}
+  const url = new URL(window.location.href);
+  url.searchParams.delete('reset');
+  url.searchParams.set('cb', Date.now()); // cache-bust the next nav
+  window.location.replace(url.toString());
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  if (new URLSearchParams(window.location.search).get('reset') === '1') {
+    document.body.innerHTML = '<div style="padding:40px 20px;text-align:center;font-family:sans-serif"><h2>Resetting…</h2><p style="color:#6b7280">Clearing the cached app. This takes a second.</p></div>';
+    return panicReset();
+  }
   await initSupabase();
   const ok = await loadBusinessData();
   if (!ok) return;

@@ -663,19 +663,29 @@
        ================================================================ */
     @media (max-width: 540px) {
       .services-grid  { grid-template-columns: 1fr; }
-      .time-grid      { grid-template-columns: repeat(3, 1fr); }
+      .time-grid      { grid-template-columns: repeat(3, 1fr); gap: 8px; }
       main            { padding: 20px 0 80px; }
       #site-header    { padding: 24px 0 8px; }
       .hero-image     { height: 170px; margin-bottom: 22px; border-radius: var(--radius-sm); }
       .hero-initials  { font-size: 56px; }
-      .biz-name       { font-size: 32px; }
-      .step-heading   { font-size: 22px; }
+      .biz-name       { font-size: 30px; line-height: 1.15; }
+      .step-heading   { font-size: 21px; }
       .success-title  { font-size: 26px; }
+      .container      { padding: 0 16px; }
+      /* Inputs + buttons sized for thumb taps. */
+      input, select, textarea, button { font-size: 16px; min-height: 44px; }
+      .time-pill, .date-pill { padding: 10px 6px; font-size: 13px; }
+      .svc-card { padding: 16px; }
     }
 
     @media (max-width: 360px) {
       .time-grid { grid-template-columns: repeat(2, 1fr); }
+      .container { padding: 0 14px; }
+      .biz-name  { font-size: 26px; }
     }
+
+    /* Hard guard: prevent any descendant from pushing horizontal scroll. */
+    html, body { overflow-x: hidden; max-width: 100%; }
   </style>
 </head>
 
