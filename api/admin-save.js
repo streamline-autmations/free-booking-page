@@ -21,6 +21,17 @@ module.exports = async (req, res) => {
 
   try {
     if (type === 'services') {
+      // Free-tier cap. Premium businesses bypass.
+      const FREE_SERVICE_CAP = 5;
+      const incoming = (data.services || []).length;
+      if (incoming > FREE_SERVICE_CAP) {
+        const { data: biz } = await supabase
+          .from('businesses').select('is_premium').eq('id', businessId).maybeSingle();
+        if (!biz || !biz.is_premium) {
+          res.status(402).json({ error: `Free plan is capped at ${FREE_SERVICE_CAP} services. Upgrade to add more.` });
+          return;
+        }
+      }
       await supabase.from('services').delete().eq('business_id', businessId);
       if (data.services && data.services.length > 0) {
         const rows = data.services.map((s, i) => ({
@@ -58,7 +69,21 @@ module.exports = async (req, res) => {
     } else if (type === 'branding') {
       const patch = {};
       if (typeof data.name === 'string' && data.name.trim()) patch.name = data.name.trim();
-      if (typeof data.accentColor === 'string') patch.accent_color = data.accentColor;
+      // Free tier may only set accent colours from the preset palette.
+      const PRESETS = ['#A8456B','#7B3FE4','#0D9488','#F87171','#84CC16','#475569'];
+      if (typeof data.accentColor === 'string') {
+        const hex = data.accentColor.trim().toUpperCase();
+        const isPreset = PRESETS.includes(hex);
+        if (!isPreset) {
+          const { data: biz } = await supabase
+            .from('businesses').select('is_premium').eq('id', businessId).maybeSingle();
+          if (!biz || !biz.is_premium) {
+            res.status(402).json({ error: 'Custom colours unlock on premium. Pick a preset or upgrade.' });
+            return;
+          }
+        }
+        patch.accent_color = data.accentColor;
+      }
       const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
     } else if (type === 'social') {

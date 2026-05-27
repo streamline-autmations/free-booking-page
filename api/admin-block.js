@@ -19,6 +19,16 @@ module.exports = async (req, res) => {
 
   const supabase = getSupabase();
 
+  // Free-tier gate — blocked slots are a premium feature.
+  {
+    const { data: biz } = await supabase
+      .from('businesses').select('is_premium').eq('id', businessId).maybeSingle();
+    if (!biz || !biz.is_premium) {
+      res.status(402).json({ error: 'Blocking time off unlocks on premium.' });
+      return;
+    }
+  }
+
   try {
     if (action === 'add') {
       const { error } = await supabase.from('blocked_slots').insert({

@@ -956,25 +956,38 @@
     <!-- ── BLOCK TIME ──────────────────────────────────────────── -->
     <div id="tab-blocked" class="tab-panel">
 
-      <div class="card">
-        <div class="card-title">📅 Block a Full Day</div>
-        <input class="block-input" type="date" id="bd-date" />
-        <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" />
-        <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()">Block This Day</button>
+      <div id="blocks-locked" style="display:none">
+        <div class="locked-card" onclick="openUpsellByTitle('Block time off')" style="cursor:pointer;padding:28px 22px;text-align:center">
+          <div style="font-size:36px;line-height:1;margin-bottom:10px">🔒</div>
+          <div class="lc-title" style="font-size:17px;margin-bottom:6px">Block time off</div>
+          <div class="lc-benefit" style="font-size:13px;line-height:1.5;margin-bottom:12px">
+            Block holidays, lunch breaks, or specific time slots so customers can't book them. Available on the premium plan.
+          </div>
+          <span class="lc-tag">Premium</span>
+        </div>
       </div>
 
-      <div class="card" style="margin-top:16px">
-        <div class="card-title">🕐 Block a Time Slot</div>
-        <input class="block-input" type="date" id="bs-date" onchange="populateSlotTimes()" />
-        <select class="block-input" id="bs-time"><option value="">— Select date first —</option></select>
-        <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" />
-        <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()">Block This Slot</button>
-      </div>
+      <div id="blocks-tools-wrap">
+        <div class="card">
+          <div class="card-title">📅 Block a Full Day</div>
+          <input class="block-input" type="date" id="bd-date" />
+          <input class="block-input" type="text" id="bd-reason" placeholder="Reason (optional)" />
+          <button class="block-btn" id="bd-submit-btn" onclick="blockFullDay()">Block This Day</button>
+        </div>
 
-      <div class="section-row" style="margin-top:20px">
-        <span class="section-label">Blocked Dates &amp; Slots</span>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">🕐 Block a Time Slot</div>
+          <input class="block-input" type="date" id="bs-date" onchange="populateSlotTimes()" />
+          <select class="block-input" id="bs-time"><option value="">— Select date first —</option></select>
+          <input class="block-input" type="text" id="bs-reason" placeholder="Reason (optional)" />
+          <button class="block-btn" id="bs-submit-btn" onclick="blockSlot()">Block This Slot</button>
+        </div>
+
+        <div class="section-row" style="margin-top:20px">
+          <span class="section-label">Blocked Dates &amp; Slots</span>
+        </div>
+        <div id="blocked-list"><!-- rendered by JS --></div>
       </div>
-      <div id="blocked-list"><!-- rendered by JS --></div>
 
     </div>
 
@@ -1003,10 +1016,25 @@
         </div>
         <div class="brand-field">
           <label>Primary colour</label>
-          <input type="color" id="brand-color"
-            style="width:64px;height:44px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
+          <div id="brand-swatches" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <!-- rendered by JS — 6 free presets + one locked Custom tile -->
+          </div>
+          <p class="hint" style="margin-top:8px">Pick from the palette. Custom colours unlock on the premium plan.</p>
         </div>
+        <input type="hidden" id="brand-color" />
         <button class="btn-primary" onclick="saveBranding()">Save Branding</button>
+      </div>
+
+      <div class="card" style="margin-top:16px;position:relative;overflow:hidden" onclick="openUpsellByTitle('Logo upload')">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer">
+          <div style="flex:1;min-width:0">
+            <div class="card-title" style="margin:0 0 4px;display:flex;align-items:center;gap:8px">
+              <span>Upload your logo</span><span style="font-size:14px">🔒</span>
+            </div>
+            <p class="hint" style="margin:0">Show your own logo on the booking page and replace the home-screen app icon.</p>
+          </div>
+          <span class="lc-tag" style="flex-shrink:0">Premium</span>
+        </div>
       </div>
 
       <div class="card" style="margin-top:18px">
@@ -1134,6 +1162,7 @@ async function loadBusinessData() {
     phone:               biz.phone         || '',
     instagramUrl:        biz.instagram_url || '',
     facebookUrl:         biz.facebook_url  || '',
+    isPremium:           !!biz.is_premium,
     workingDays:         biz.working_days  || [1,2,3,4,5,6],
     workingHours:        biz.working_hours || { start: 8, end: 17 },
     slotIntervalMinutes: biz.slot_interval || 30,
@@ -1352,9 +1381,21 @@ async function deleteSvc(id) {
 }
 
 function openAddForm() {
+  // Free tier caps at 5 services. Premium unlocks unlimited.
+  if (!CONFIG.isPremium && (CONFIG.services || []).length >= 5) {
+    openUpsellByTitle('Unlimited services');
+    return;
+  }
   document.getElementById('add-form-wrap').classList.add('open');
   ['add-name','add-duration','add-price'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('add-name').focus();
+}
+
+// Helper to open the upsell modal by feature name — used by every per-feature
+// gate so we don't repeat the index lookup in three places.
+function openUpsellByTitle(title) {
+  const i = LOCKED_FEATURES.findIndex(f => f.title === title);
+  if (i >= 0) openUpsell(i);
 }
 
 function closeAddForm() {
@@ -1503,6 +1544,17 @@ function todayISO() {
 }
 
 async function renderBlocked() {
+  // Free tier: swap the tab to a locked card and bail.
+  const lockedEl = document.getElementById('blocks-locked');
+  const toolsEl  = document.getElementById('blocks-tools-wrap');
+  if (!CONFIG.isPremium) {
+    if (lockedEl) lockedEl.style.display = 'block';
+    if (toolsEl)  toolsEl.style.display  = 'none';
+    return;
+  }
+  if (lockedEl) lockedEl.style.display = 'none';
+  if (toolsEl)  toolsEl.style.display  = 'block';
+
   const today = todayISO();
   const dInput = document.getElementById('bd-date');
   const sInput = document.getElementById('bs-date');
@@ -1731,6 +1783,10 @@ async function setBookingStatus(id, status) {
 /* Wording kept consistent with Workflow F's booking-triggered upsell. */
 const LOCKED_FEATURES = [
   { title: 'Push notifications',   benefit: 'Ping your phone the second a booking comes in — never miss a new appointment.' },
+  { title: 'Unlimited services',   benefit: 'Free plan caps at 5 services. Upgrade to list everything you offer.' },
+  { title: 'Block time off',       benefit: 'Block holidays, lunch breaks, or specific time slots so customers can\'t book them.' },
+  { title: 'Custom brand colour',  benefit: 'Pick any colour for your booking page — not just the preset palette.' },
+  { title: 'Logo upload',          benefit: 'Show your own logo on the booking page and the home-screen app icon.' },
   { title: 'Take deposits',        benefit: 'Require a deposit before clients can book — kills no-shows.' },
   { title: 'Auto reminders',       benefit: 'Automatic WhatsApp + email reminders before every appointment.' },
   { title: 'Custom domain',        benefit: 'Use your own domain instead of the shared link.' },
@@ -1742,9 +1798,45 @@ const LOCKED_FEATURES = [
 ];
 const STREAMLINE_WA = '27837797935';
 
+// Six tasteful preset accents available to every salon for free. Premium users
+// can override via the locked "Custom brand colour" tile (opens upsell modal).
+const BRAND_PRESETS = [
+  { name: 'Mauve',     value: '#A8456B' },
+  { name: 'Purple',    value: '#7B3FE4' },
+  { name: 'Teal',      value: '#0D9488' },
+  { name: 'Coral',     value: '#F87171' },
+  { name: 'Olive',     value: '#84CC16' },
+  { name: 'Slate',     value: '#475569' },
+];
+
+function pickBrandColour(hex) {
+  document.getElementById('brand-color').value = hex;
+  renderBrandSwatches();
+}
+
+function renderBrandSwatches() {
+  const current = (document.getElementById('brand-color').value || CONFIG.accentColor || '#7B3FE4').toLowerCase();
+  const wrap = document.getElementById('brand-swatches');
+  if (!wrap) return;
+  const sw = (p) => {
+    const active = p.value.toLowerCase() === current;
+    return `<button type="button"
+      onclick="pickBrandColour('${p.value}')"
+      title="${p.name}"
+      aria-label="${p.name}"
+      style="width:36px;height:36px;border-radius:50%;border:2px solid ${active ? '#111827' : 'var(--border)'};background:${p.value};cursor:pointer;padding:0;transition:transform .15s,box-shadow .15s;box-shadow:${active ? '0 0 0 3px rgba(0,0,0,0.04)' : 'none'}"></button>`;
+  };
+  const customLocked = `
+    <button type="button" onclick="openUpsellByTitle('Custom brand colour')"
+      title="Custom colour (premium)"
+      style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);background:repeating-conic-gradient(#eee 0% 25%,#f8f8f8 0% 50%) 50%/9px 9px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-size:14px">🔒</button>`;
+  wrap.innerHTML = BRAND_PRESETS.map(sw).join('') + customLocked;
+}
+
 function renderMore() {
   document.getElementById('brand-name').value  = CONFIG.businessName || '';
   document.getElementById('brand-color').value = (CONFIG.accentColor || '#7B3FE4');
+  renderBrandSwatches();
   const ig = document.getElementById('social-ig');
   const fb = document.getElementById('social-fb');
   if (ig) ig.value = CONFIG.instagramUrl || '';
@@ -1859,28 +1951,18 @@ function makeIcon(size) {
 }
 
 function buildManifest() {
+  // Point at the real /api/manifest endpoint — Chrome rejects blob: URLs for
+  // PWA install criteria, which is why the install prompt never fired. The
+  // icon is a single Streamline mark served from /icons/. Theme colour still
+  // tracks the per-business accent so the install banner reads correctly.
   try {
-    const icon192 = makeIcon(192);
-    const icon512 = makeIcon(512);
-    const manifest = {
-      name: `${CONFIG.businessName} Bookings`,
-      short_name: (CONFIG.businessName || 'Bookings').slice(0, 12),
-      start_url: `/admin?biz=${CONFIG.businessId}`,
-      scope: '/admin',
-      display: 'standalone',
-      background_color: '#ffffff',
-      theme_color: CONFIG.accentColor || '#7B3FE4',
-      icons: [
-        { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-        { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-      ],
-    };
-    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-    document.getElementById('manifest-link').href = URL.createObjectURL(blob);
-    document.getElementById('apple-icon').href = icon192;
+    const link = document.getElementById('manifest-link');
+    if (link) link.href = `/api/manifest?biz=${encodeURIComponent(CONFIG.businessId || '')}`;
+    const apple = document.getElementById('apple-icon');
+    if (apple) apple.href = '/icons/sl-192.png';
     const tc = document.querySelector('meta[name="theme-color"]');
     if (tc) tc.setAttribute('content', CONFIG.accentColor || '#7B3FE4');
-  } catch (e) { /* canvas/blob unsupported — app still works, just not installable */ }
+  } catch (e) { /* manifest setup failed — app still works, just not installable */ }
 }
 
 function registerSW() {
