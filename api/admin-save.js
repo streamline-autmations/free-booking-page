@@ -61,6 +61,28 @@ module.exports = async (req, res) => {
       if (typeof data.accentColor === 'string') patch.accent_color = data.accentColor;
       const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'social') {
+      // Accepts: { instagram_url, facebook_url } — either or both. Empty string clears.
+      const patch = {};
+      const clean = (s) => {
+        if (s === null || s === undefined) return undefined;
+        const t = String(s).trim();
+        if (t === '') return null;
+        // Accept either @handle or full URL; store normalised URL.
+        if (/^https?:\/\//i.test(t)) return t;
+        if (t.startsWith('@')) return t; // keep handle, footer code resolves it
+        return t;
+      };
+      const ig = clean(data.instagram_url);
+      const fb = clean(data.facebook_url);
+      if (ig !== undefined) patch.instagram_url = ig;
+      if (fb !== undefined) patch.facebook_url = fb;
+      if (Object.keys(patch).length === 0) {
+        res.status(400).json({ error: 'Nothing to save' });
+        return;
+      }
+      const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
     } else if (type === 'booking_status') {
       const allowed = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
       if (!data.bookingId || !allowed.includes(data.status)) {

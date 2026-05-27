@@ -1009,6 +1009,25 @@
         <button class="btn-primary" onclick="saveBranding()">Save Branding</button>
       </div>
 
+      <div class="card" style="margin-top:18px">
+        <div class="card-title">Your socials</div>
+        <p style="font-size:13px;color:var(--text-2);line-height:1.55;margin:-4px 0 14px">
+          Every Streamline booking page shows our socials by default as a small thanks for the free service.
+          If you'd like yours here instead, give us a follow on Instagram
+          (<a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:500">@streamline_automations</a>)
+          and pop your own handles in below. Honour system — no gate.
+        </p>
+        <div class="brand-field">
+          <label>Instagram (handle or full URL)</label>
+          <input class="block-input" type="text" id="social-ig" placeholder="@yoursalon  or  https://instagram.com/yoursalon" style="margin-bottom:0" />
+        </div>
+        <div class="brand-field">
+          <label>Facebook (page URL)</label>
+          <input class="block-input" type="text" id="social-fb" placeholder="https://facebook.com/yoursalon" style="margin-bottom:0" />
+        </div>
+        <button class="btn-primary" onclick="saveSocials()">Save Socials</button>
+      </div>
+
       <div class="section-row" style="margin-top:22px">
         <span class="section-label">Premium — upgrade to unlock</span>
       </div>
@@ -1113,6 +1132,8 @@ async function loadBusinessData() {
     accentColorDark:     biz.accent_dark   || '#9333ea',
     ownerEmail:          biz.owner_email   || '',
     phone:               biz.phone         || '',
+    instagramUrl:        biz.instagram_url || '',
+    facebookUrl:         biz.facebook_url  || '',
     workingDays:         biz.working_days  || [1,2,3,4,5,6],
     workingHours:        biz.working_hours || { start: 8, end: 17 },
     slotIntervalMinutes: biz.slot_interval || 30,
@@ -1723,6 +1744,10 @@ const STREAMLINE_WA = '27837797935';
 function renderMore() {
   document.getElementById('brand-name').value  = CONFIG.businessName || '';
   document.getElementById('brand-color').value = (CONFIG.accentColor || '#7B3FE4');
+  const ig = document.getElementById('social-ig');
+  const fb = document.getElementById('social-fb');
+  if (ig) ig.value = CONFIG.instagramUrl || '';
+  if (fb) fb.value = CONFIG.facebookUrl  || '';
 
   document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES.map((f, i) => `
     <div class="locked-card" onclick="openUpsell(${i})">
@@ -1750,6 +1775,19 @@ function openUpsell(i) {
 function closeUpsell() {
   // Inner box stops propagation, so overlay clicks + "Maybe later" both land here.
   document.getElementById('upsell-modal').classList.remove('open');
+}
+
+async function saveSocials() {
+  const ig = (document.getElementById('social-ig').value || '').trim();
+  const fb = (document.getElementById('social-fb').value || '').trim();
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'social',
+    data: { instagram_url: ig, facebook_url: fb },
+  });
+  if (error) { toast("Couldn't save — " + (error.message || 'try again'), 'error'); return; }
+  CONFIG.instagramUrl = ig || null;
+  CONFIG.facebookUrl  = fb || null;
+  toast('Socials saved ✓');
 }
 
 async function saveBranding() {
