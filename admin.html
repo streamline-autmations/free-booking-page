@@ -1110,8 +1110,25 @@
         <button class="btn-primary" onclick="saveSocials()">Save Socials</button>
       </div>
 
+      <!-- Hero locked card — Calendar Connect. Most prominent upsell, sits
+           above the rest of the locked grid. -->
+      <div onclick="openUpsellByTitle('Connect Google Calendar')"
+        style="margin-top:22px;cursor:pointer;border-radius:16px;padding:22px 20px;background:linear-gradient(135deg,#4285F4 0%,#7B3FE4 100%);color:#fff;box-shadow:0 8px 28px rgba(66,133,244,0.25);position:relative;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="flex-shrink:0;width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;opacity:0.88;text-transform:uppercase;margin-bottom:4px">Most popular upgrade</div>
+            <div style="font-size:18px;font-weight:700;line-height:1.25;margin-bottom:4px">Connect Google Calendar</div>
+            <div style="font-size:13px;line-height:1.45;opacity:0.95">Bookings appear in your calendar instantly. Block sync both ways — never double-book again.</div>
+          </div>
+          <div style="flex-shrink:0;font-size:22px;line-height:1">🔒</div>
+        </div>
+      </div>
+
       <div class="section-row" style="margin-top:22px">
-        <span class="section-label">Premium — upgrade to unlock</span>
+        <span class="section-label">More premium features</span>
       </div>
       <div class="locked-grid" id="locked-grid"><!-- rendered by JS --></div>
 
@@ -2002,6 +2019,7 @@ async function setBookingStatus(id, status) {
    ---------------------------------------------------------------- */
 /* Wording kept consistent with Workflow F's booking-triggered upsell. */
 const LOCKED_FEATURES = [
+  { title: 'Connect Google Calendar', benefit: 'Every booking lands in your Google Calendar automatically. Blocks sync both ways so the page never double-books.' },
   { title: 'Push notifications',   benefit: 'Ping your phone the second a booking comes in — never miss a new appointment.' },
   { title: 'Unlimited services',   benefit: 'Free plan caps at 5 services. Upgrade to list everything you offer.' },
   { title: 'Block time off',       benefit: 'Block holidays, lunch breaks, or specific time slots so customers can\'t book them.' },
@@ -2062,7 +2080,12 @@ function renderMore() {
   if (ig) ig.value = CONFIG.instagramUrl || '';
   if (fb) fb.value = CONFIG.facebookUrl  || '';
 
-  document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES.map((f, i) => `
+  // Calendar Connect gets the hero card above — exclude from the grid so it
+  // doesn't appear twice.
+  document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES
+    .map((f, i) => ({ f, i }))
+    .filter((x) => x.f.title !== 'Connect Google Calendar')
+    .map(({ f, i }) => `
     <div class="locked-card" onclick="openUpsell(${i})">
       <span class="lc-lock">🔒</span>
       <div class="lc-title">${esc(f.title)}</div>
