@@ -1730,6 +1730,7 @@ async function setBookingStatus(id, status) {
    ---------------------------------------------------------------- */
 /* Wording kept consistent with Workflow F's booking-triggered upsell. */
 const LOCKED_FEATURES = [
+  { title: 'Push notifications',   benefit: 'Ping your phone the second a booking comes in — never miss a new appointment.' },
   { title: 'Take deposits',        benefit: 'Require a deposit before clients can book — kills no-shows.' },
   { title: 'Auto reminders',       benefit: 'Automatic WhatsApp + email reminders before every appointment.' },
   { title: 'Custom domain',        benefit: 'Use your own domain instead of the shared link.' },
@@ -1883,9 +1884,30 @@ function buildManifest() {
 }
 
 function registerSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/sw.js').then((reg) => {
+    // When a new sw.js is found, push it through and reload the page once.
+    // Stops users from being stuck on a stale build after every deploy.
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) {
+          w.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+    // Force an update check whenever the tab becomes visible.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 }
 
 /* ----------------------------------------------------------------

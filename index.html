@@ -1422,8 +1422,9 @@ async function handleSubmit(e) {
   };
 
   // Save booking to Supabase
+  let insertedId = null;
   try {
-    await supabaseClient.from('bookings').insert({
+    const { data, error } = await supabaseClient.from('bookings').insert({
       business_id:    CONFIG.businessId,
       service_name:   S.service.name,
       service_id:     String(S.service.id),
@@ -1436,9 +1437,21 @@ async function handleSubmit(e) {
       customer_phone: phone,
       customer_note:  note,
       status:         'pending',
-    });
+    }).select('id').single();
+    if (error) throw error;
+    insertedId = data && data.id;
   } catch (err) {
     console.error('[booking] Supabase insert error:', err);
+  }
+
+  // Fire-and-forget confirmation emails (customer + salon owner). Won't block
+  // the user-visible success state — failures are logged server-side.
+  if (insertedId) {
+    fetch('/api/send-booking-emails', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ bookingId: insertedId }),
+    }).catch(() => {});
   }
 
   // Fire webhook notification
