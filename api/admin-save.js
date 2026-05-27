@@ -86,6 +86,17 @@ module.exports = async (req, res) => {
       }
       const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'logo') {
+      // Logo upload is free for every salon. Empty string clears.
+      const raw = data && data.logo_url;
+      const url = raw == null ? null : String(raw).trim();
+      const value = url === '' ? null : url;
+      if (value && !/^https:\/\/res\.cloudinary\.com\//i.test(value)) {
+        res.status(400).json({ error: 'Logo URL must come from Cloudinary' });
+        return;
+      }
+      const { error } = await supabase.from('businesses').update({ logo_url: value }).eq('id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
     } else if (type === 'social') {
       // Accepts: { instagram_url, facebook_url } — either or both. Empty string clears.
       const patch = {};
