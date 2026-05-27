@@ -733,11 +733,21 @@
         <div class="services-grid" id="services-grid"></div>
       </div>
 
-      <!-- ── STEP 2: Date & time ───────────────────────────────── -->
-      <div class="step-panel" id="step-2">
+      <!-- ── STEP STYLIST (optional, only when 2+ stylists) ─────── -->
+      <div class="step-panel" id="step-stylist">
         <button class="back-btn" onclick="goToStep(1)">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
           Back to services
+        </button>
+        <p class="step-heading">Choose your stylist</p>
+        <div class="services-grid" id="stylist-grid"></div>
+      </div>
+
+      <!-- ── STEP 2: Date & time ───────────────────────────────── -->
+      <div class="step-panel" id="step-2">
+        <button class="back-btn" onclick="goBackFromDate()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          <span id="step2-back-label">Back to services</span>
         </button>
 
         <p class="section-label">Select a date</p>
@@ -854,6 +864,7 @@ async function initSupabase() {
    ---------------------------------------------------------------- */
 let blockedSlots = [];
 let existingBookings = [];
+let stylists = [];
 
 function parseTime(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
@@ -934,6 +945,14 @@ async function loadBusinessData() {
     .in('status', ['pending', 'confirmed'])
     .gte('booking_date', today);
 
+  // Fetch stylists (free feature — optional team list).
+  const { data: styRows } = await supabaseClient
+    .from('stylists')
+    .select('id,name,photo_url,sort_order')
+    .eq('business_id', bizId)
+    .order('sort_order');
+  stylists = styRows || [];
+
   CONFIG = {
     businessId: business.id,
     businessName: business.name,
@@ -1004,12 +1023,18 @@ function showNoBusinessError() {
 let S = {
   step:           1,
   service:        null,   // selected service object
+  stylistId:      null,   // null === "Any available"
+  stylistName:    null,   // display name for summary; null when "any"
   dateISO:        null,   // "2026-04-29"
   dateObj:        null,   // Date object
   dateLong:       "",     // "Tuesday, 29 April 2026"
   time24:         null,   // "10:00"
   time12:         null,   // "10:00 AM"
 };
+
+function stylistStepActive() {
+  return Array.isArray(stylists) && stylists.length >= 2;
+}
 
 /* ----------------------------------------------------------------
    UTILITY HELPERS
@@ -1225,18 +1250,86 @@ function pickService(id) {
   if (prev && prev.id !== id) {
     S.dateISO = null; S.dateObj = null; S.dateLong = '';
     S.time24  = null; S.time12  = null;
+    S.stylistId = null; S.stylistName = null;
   }
 
   document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
   document.getElementById(`svc-${id}`).classList.add('selected');
 
-  setTimeout(() => goToStep(2), 280);
+  setTimeout(() => {
+    if (stylistStepActive()) {
+      goToStylistStep();
+    } else {
+      goToStep(2);
+    }
+  }, 280);
+}
+
+/* ----------------------------------------------------------------
+   STEP STYLIST (optional)
+   ---------------------------------------------------------------- */
+function escapeAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function renderStylistGrid() {
+  const cards = [];
+  const anySel = !S.stylistId ? ' selected' : '';
+  cards.push(`
+    <div class="svc-card${anySel}" id="sty-any" onclick="pickStylist(null, null)">
+      <div class="svc-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="svc-name">Any available</div>
+      <div class="svc-duration">No preference</div>
+    </div>`);
+  stylists.forEach(st => {
+    const sel = String(S.stylistId) === String(st.id) ? ' selected' : '';
+    const photo = st.photo_url
+      ? `<img src="${escapeAttr(st.photo_url)}" alt="${escapeHtml(st.name)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;display:block" />`
+      : `<div style="width:64px;height:64px;border-radius:50%;background:var(--accent-tint);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:22px;margin:0 auto 8px">${escapeHtml(getInitials(st.name))}</div>`;
+    cards.push(`
+      <div class="svc-card${sel}" id="sty-${st.id}" onclick="pickStylist('${escapeAttr(st.id)}', '${escapeAttr(st.name)}')">
+        <div class="svc-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        ${photo}
+        <div class="svc-name">${escapeHtml(st.name)}</div>
+      </div>`);
+  });
+  document.getElementById('stylist-grid').innerHTML = cards.join('');
+}
+
+function goToStylistStep() {
+  const from = document.getElementById(`step-${S.step}`);
+  const to   = document.getElementById('step-stylist');
+  if (from === to) return;
+  from.classList.add('exiting');
+  setTimeout(() => {
+    from.classList.remove('active', 'exiting');
+    renderStylistGrid();
+    to.classList.add('active');
+    S.step = 'stylist';
+    setProgress(1);
+    const top = document.getElementById('progress-wrap').getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, 200);
+}
+
+function pickStylist(id, name) {
+  S.stylistId   = id || null;
+  S.stylistName = name || null;
+  document.querySelectorAll('#stylist-grid .svc-card').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById(id ? `sty-${id}` : 'sty-any');
+  if (el) el.classList.add('selected');
+  setTimeout(() => goToStep(2), 220);
 }
 
 /* ----------------------------------------------------------------
    STEP 2 — Date strip
    ---------------------------------------------------------------- */
+function goBackFromDate() {
+  if (stylistStepActive()) goToStylistStep();
+  else goToStep(1);
+}
+
 function renderStep2() {
+  const lbl = document.getElementById('step2-back-label');
+  if (lbl) lbl.textContent = stylistStepActive() ? 'Back to stylist' : 'Back to services';
   buildDateStrip();
 
   if (S.dateISO) {
@@ -1363,6 +1456,7 @@ function renderStep3() {
       Your Booking
     </div>
     <div class="bkg-row"><span class="bkg-label">Service</span> <span class="bkg-value">${svc.name}</span></div>
+    ${S.stylistName ? `<div class="bkg-row"><span class="bkg-label">Stylist</span> <span class="bkg-value">${escapeHtml(S.stylistName)}</span></div>` : ''}
     <div class="bkg-row"><span class="bkg-label">Date</span>    <span class="bkg-value">${S.dateLong}</span></div>
     <div class="bkg-row"><span class="bkg-label">Time</span>    <span class="bkg-value">${S.time12}</span></div>
     <div class="bkg-row"><span class="bkg-label">Duration</span><span class="bkg-value">${svc.duration} min</span></div>
@@ -1421,6 +1515,8 @@ async function handleSubmit(e) {
     booking: {
       service:       S.service.name,
       serviceId:     S.service.id,
+      stylistId:     S.stylistId || null,
+      stylistName:   S.stylistName || null,
       duration:      S.service.duration,
       price:         S.service.price,
       date:          S.dateISO,
@@ -1446,6 +1542,7 @@ async function handleSubmit(e) {
       customer_email: email,
       customer_phone: phone,
       customer_note:  note,
+      stylist_id:     S.stylistId || null,
       status:         'pending',
     }).select('id').single();
     if (error) throw error;
@@ -1504,7 +1601,7 @@ function showSuccess(customerName) {
    RESET — back to step 1
    ---------------------------------------------------------------- */
 function resetBooking() {
-  S = { step:1, service:null, dateISO:null, dateObj:null, dateLong:'', time24:null, time12:null };
+  S = { step:1, service:null, stylistId:null, stylistName:null, dateISO:null, dateObj:null, dateLong:'', time24:null, time12:null };
 
   document.getElementById('booking-form').reset();
   document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.classList.remove('err'));
