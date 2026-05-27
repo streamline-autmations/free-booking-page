@@ -977,46 +977,6 @@ function showNoBusinessError() {
 }
 
 /* ----------------------------------------------------------------
-   LOAD ADMIN-SAVED DATA FROM SUPABASE (via CONFIG)
-   ---------------------------------------------------------------- */
-function loadSavedData() {
-  // Data is now loaded via Supabase directly in loadBusinessData
-  // localStorage is deprecated but kept for manual overrides
-  try {
-    const p = `sa_booking_${CONFIG.businessId}`;
-    const sv = localStorage.getItem(`${p}_services`);
-    if (sv) CONFIG.services = JSON.parse(sv);
-    const sh = localStorage.getItem(`${p}_hours`);
-    if (sh) {
-      const h = JSON.parse(sh);
-      if (h.workingDays)  CONFIG.workingDays  = h.workingDays;
-      if (h.workingHours) CONFIG.workingHours = h.workingHours;
-    }
-    const sb = localStorage.getItem(`${p}_blocked`);
-    window.blockedSlots = sb ? JSON.parse(sb) : (window.blockedSlots || []);
-  } catch(e) {
-    window.blockedSlots = window.blockedSlots || [];
-  }
-}
-
-/* ----------------------------------------------------------------
-   BLOCKED SLOT HELPERS
-   ---------------------------------------------------------------- */
-function isDayFullyBlocked(dateObj) {
-  if (!window.blockedSlots || !window.blockedSlots.length) return false;
-  const ds = isoDate(dateObj);
-  return window.blockedSlots.some(b => b.date === ds && b.type === 'day');
-}
-
-function isSlotBlocked(dateObj, time24) {
-  if (!window.blockedSlots || !window.blockedSlots.length) return false;
-  const ds = isoDate(dateObj);
-  return window.blockedSlots.some(b =>
-    b.date === ds && (b.type === 'day' || (b.type === 'slot' && b.time === time24))
-  );
-}
-
-/* ----------------------------------------------------------------
    STATE
    ---------------------------------------------------------------- */
 let S = {
@@ -1093,7 +1053,6 @@ function boot() {
 document.addEventListener('DOMContentLoaded', async () => {
   // Step 1: Initialize default config for immediate render
   useDefaultConfig();
-  loadSavedData();
   boot();
 
   // Step 2: Initialize Supabase and load real data
