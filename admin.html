@@ -901,6 +901,7 @@
   <nav class="admin-tabs">
     <button class="tab-btn active" onclick="switchTab('bookings', this)">Bookings</button>
     <button class="tab-btn"        onclick="switchTab('services', this)">Services</button>
+    <button class="tab-btn"        onclick="switchTab('team', this)">Team</button>
     <button class="tab-btn"        onclick="switchTab('hours', this)">Hours</button>
     <button class="tab-btn"        onclick="switchTab('blocked', this)">Blocks</button>
     <button class="tab-btn"        onclick="switchTab('more', this)">Premium</button>
@@ -946,6 +947,18 @@
       </div>
 
       <div id="svc-list"><!-- rendered by JS --></div>
+    </div>
+
+    <!-- ── TEAM (stylists) ─────────────────────────────────────── -->
+    <div id="tab-team" class="tab-panel">
+      <div class="section-row">
+        <span class="section-label">Stylists</span>
+        <button class="btn-primary" onclick="addStylist()">+ Add stylist</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px">Stylists are optional. With 0 or 1 stylist, the booking page hides the picker. With 2+, customers see "Any available" plus your team.</p>
+      <div id="stylist-hint" style="display:none"></div>
+      <div id="stylist-list"><!-- rendered by JS --></div>
+      <input id="stylist-photo-file" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="onStylistPhotoChosen(this)" />
     </div>
 
     <!-- ── HOURS ───────────────────────────────────────────────── -->
@@ -1097,8 +1110,25 @@
         <button class="btn-primary" onclick="saveSocials()">Save Socials</button>
       </div>
 
+      <!-- Hero locked card — Calendar Connect. Most prominent upsell, sits
+           above the rest of the locked grid. -->
+      <div onclick="openUpsellByTitle('Connect Google Calendar')"
+        style="margin-top:22px;cursor:pointer;border-radius:16px;padding:22px 20px;background:linear-gradient(135deg,#4285F4 0%,#7B3FE4 100%);color:#fff;box-shadow:0 8px 28px rgba(66,133,244,0.25);position:relative;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="flex-shrink:0;width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;opacity:0.88;text-transform:uppercase;margin-bottom:4px">Most popular upgrade</div>
+            <div style="font-size:18px;font-weight:700;line-height:1.25;margin-bottom:4px">Connect Google Calendar</div>
+            <div style="font-size:13px;line-height:1.45;opacity:0.95">Bookings appear in your calendar instantly. Block sync both ways — never double-book again.</div>
+          </div>
+          <div style="flex-shrink:0;font-size:22px;line-height:1">🔒</div>
+        </div>
+      </div>
+
       <div class="section-row" style="margin-top:22px">
-        <span class="section-label">Premium — upgrade to unlock</span>
+        <span class="section-label">More premium features</span>
       </div>
       <div class="locked-grid" id="locked-grid"><!-- rendered by JS --></div>
 
@@ -1142,6 +1172,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let CONFIG = null;
 let supabaseClient = null;
 let SERVICES = [];
+let STYLISTS = [];
 
 function getBusinessIdFromUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -1211,6 +1242,18 @@ async function loadBusinessData() {
     sameDayBooking:      biz.same_day !== false,
     webhookUrl:          biz.webhook_url   || '',
   };
+
+  // Stylists (free for every salon; may be empty)
+  try {
+    const { data: styRows } = await supabaseClient
+      .from('stylists').select('id,name,photo_url,sort_order')
+      .eq('business_id', biz.id).order('sort_order');
+    STYLISTS = styRows || [];
+  } catch (_) {
+    STYLISTS = [];
+  }
+  CONFIG.stylists = STYLISTS;
+
   return true;
 }
 
@@ -1319,6 +1362,7 @@ function switchTab(name, btn) {
 
 function renderActiveTab() {
   if (activeTab === 'services') renderServices();
+  if (activeTab === 'team')     renderStylists();
   if (activeTab === 'hours')    renderHours();
   if (activeTab === 'blocked')  renderBlocked();
   if (activeTab === 'bookings') renderBookings();
@@ -1459,6 +1503,152 @@ async function saveNewService() {
   closeAddForm();
   renderServices();
   toast('Service added ✓');
+}
+
+/* ----------------------------------------------------------------
+   TEAM / STYLISTS — free feature, per-business
+   ---------------------------------------------------------------- */
+function stylistInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/);
+  const a = (parts[0] || '').charAt(0);
+  const b = (parts[1] || '').charAt(0);
+  return ((a + b) || 'S').toUpperCase();
+}
+
+function renderStylists() {
+  const list = document.getElementById('stylist-list');
+  const hint = document.getElementById('stylist-hint');
+
+  if (STYLISTS.length < 2) {
+    hint.style.display = 'block';
+    hint.innerHTML = `
+      <div class="card" style="background:var(--accent-tint);border:1px dashed var(--accent);margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text-2);line-height:1.55">
+          Add 2+ stylists to give customers a "choose stylist" step on the booking page. With 0 or 1 stylist, the step is hidden.
+        </div>
+      </div>`;
+  } else {
+    hint.style.display = 'none';
+    hint.innerHTML = '';
+  }
+
+  if (STYLISTS.length === 0) {
+    list.innerHTML = '<div class="empty-state">No stylists yet. Add your team so customers can pick who they want.</div>';
+    return;
+  }
+
+  list.innerHTML = STYLISTS.map((s, i) => {
+    const photo = s.photo_url
+      ? `<img src="${esc(s.photo_url)}" alt="${esc(s.name)}" style="width:100%;height:100%;object-fit:cover" />`
+      : `<span>${esc(stylistInitials(s.name))}</span>`;
+    return `
+      <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px">
+        <div style="flex-shrink:0;width:56px;height:56px;border-radius:50%;background:var(--accent-tint);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:600;font-size:18px;overflow:hidden">
+          ${photo}
+        </div>
+        <div style="flex:1;min-width:0">
+          <input type="text" id="sty-name-${i}" value="${esc(s.name)}"
+            style="width:100%;border:1px solid transparent;background:transparent;font-size:15px;font-weight:600;color:var(--text-1);padding:6px 8px;border-radius:8px;min-height:36px"
+            onfocus="this.style.borderColor='var(--border)'"
+            onblur="this.style.borderColor='transparent';saveStylistName('${s.id}', ${i})" />
+          <div id="sty-status-${i}" class="hint" style="margin-top:2px;min-height:14px;padding-left:8px"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button class="btn-secondary" style="min-height:36px;padding:7px 12px;font-size:13px" onclick="pickStylistPhoto('${s.id}')">${s.photo_url ? 'Change photo' : 'Add photo'}</button>
+          <button class="btn-danger"    style="min-height:36px;padding:7px 12px;font-size:13px" onclick="deleteStylist('${s.id}')">Remove</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function addStylist() {
+  const name = (prompt('Stylist name?') || '').trim();
+  if (!name) return;
+  const { data, error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'stylist_add', data: { name },
+  });
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
+  if (data && data.stylist) {
+    STYLISTS.push(data.stylist);
+    CONFIG.stylists = STYLISTS;
+  }
+  renderStylists();
+  toast('Saved ✓');
+}
+
+async function saveStylistName(id, i) {
+  const inp = document.getElementById(`sty-name-${i}`);
+  if (!inp) return;
+  const newName = inp.value.trim();
+  const cur = STYLISTS.find(s => String(s.id) === String(id));
+  if (!cur) return;
+  if (!newName) { inp.value = cur.name; return; }
+  if (newName === cur.name) return;
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'stylist_update',
+    data: { stylist_id: id, name: newName },
+  });
+  if (error) {
+    inp.value = cur.name;
+    toast("Couldn't save — try again", 'error');
+    return;
+  }
+  cur.name = newName;
+  CONFIG.stylists = STYLISTS;
+  toast('Saved ✓');
+}
+
+async function deleteStylist(id) {
+  const cur = STYLISTS.find(s => String(s.id) === String(id));
+  if (!cur) return;
+  if (!confirm(`Remove ${cur.name}? This can't be undone.`)) return;
+  const { error } = await callFn('admin-save', {
+    businessId: CONFIG.businessId, type: 'stylist_delete', data: { stylist_id: id },
+  });
+  if (error) { toast("Couldn't save — try again", 'error'); return; }
+  STYLISTS = STYLISTS.filter(s => String(s.id) !== String(id));
+  CONFIG.stylists = STYLISTS;
+  renderStylists();
+  toast('Stylist removed');
+}
+
+let PENDING_STYLIST_PHOTO_ID = null;
+function pickStylistPhoto(id) {
+  PENDING_STYLIST_PHOTO_ID = id;
+  const inp = document.getElementById('stylist-photo-file');
+  inp.value = '';
+  inp.click();
+}
+
+async function onStylistPhotoChosen(input) {
+  const id = PENDING_STYLIST_PHOTO_ID;
+  PENDING_STYLIST_PHOTO_ID = null;
+  const file = input.files && input.files[0];
+  if (!file || !id) return;
+  try {
+    const blob = await resizeImage(file, 512);
+    const form = new FormData();
+    form.append('file', blob, file.name);
+    form.append('upload_preset', CLOUDINARY_PRESET);
+    form.append('tags', `streamline-stylist,biz=${CONFIG.businessId}`);
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: form });
+    const j = await r.json();
+    if (!r.ok || !j.secure_url) throw new Error(j.error && j.error.message || 'Upload failed');
+    const { error } = await callFn('admin-save', {
+      businessId: CONFIG.businessId, type: 'stylist_update',
+      data: { stylist_id: id, photo_url: j.secure_url },
+    });
+    if (error) throw new Error(error.message || 'Save failed');
+    const cur = STYLISTS.find(s => String(s.id) === String(id));
+    if (cur) cur.photo_url = j.secure_url;
+    CONFIG.stylists = STYLISTS;
+    renderStylists();
+    toast('Saved ✓');
+  } catch (e) {
+    toast("Couldn't save — " + (e.message || 'try again'), 'error');
+  } finally {
+    input.value = '';
+  }
 }
 
 /* ----------------------------------------------------------------
@@ -1772,17 +1962,22 @@ async function renderBookings() {
       </div>
     </div>`;
 
+  const stylistMap = {};
+  (STYLISTS || []).forEach(s => { stylistMap[s.id] = s.name; });
+
   const cards = bookings.map(b => {
     const d    = new Date(b.booking_date + 'T00:00:00');
     const dfmt = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
     const sc   = STATUS_COLOR[b.status] || '#6b7280';
     const opts = BOOKING_STATUSES.map(s => `<option value="${s}"${b.status===s?' selected':''}>${STATUS_LABEL[s]}</option>`).join('');
+    const stylistName = b.stylist_id ? stylistMap[b.stylist_id] : null;
     return `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;${b.booking_date < today ? 'opacity:0.6' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
           <div>
             <div style="font-weight:600;font-size:15px">${esc(b.customer_name)}</div>
             <div style="font-size:13px;color:var(--text-2);margin-top:2px">${esc(b.service_name)} &middot; ${dfmt} at ${fmt12(b.booking_time)}</div>
+            ${stylistName ? `<div style="font-size:13px;color:var(--text-2);margin-top:2px">with ${esc(stylistName)}</div>` : ''}
             <div style="font-size:13px;color:var(--text-2)">${esc(b.customer_phone)} &middot; ${esc(b.customer_email)}</div>
             ${b.customer_note ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">"${esc(b.customer_note)}"</div>` : ''}
           </div>
@@ -1824,6 +2019,7 @@ async function setBookingStatus(id, status) {
    ---------------------------------------------------------------- */
 /* Wording kept consistent with Workflow F's booking-triggered upsell. */
 const LOCKED_FEATURES = [
+  { title: 'Connect Google Calendar', benefit: 'Every booking lands in your Google Calendar automatically. Blocks sync both ways so the page never double-books.' },
   { title: 'Push notifications',   benefit: 'Ping your phone the second a booking comes in — never miss a new appointment.' },
   { title: 'Unlimited services',   benefit: 'Free plan caps at 5 services. Upgrade to list everything you offer.' },
   { title: 'Block time off',       benefit: 'Block holidays, lunch breaks, or specific time slots so customers can\'t book them.' },
@@ -1884,7 +2080,12 @@ function renderMore() {
   if (ig) ig.value = CONFIG.instagramUrl || '';
   if (fb) fb.value = CONFIG.facebookUrl  || '';
 
-  document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES.map((f, i) => `
+  // Calendar Connect gets the hero card above — exclude from the grid so it
+  // doesn't appear twice.
+  document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES
+    .map((f, i) => ({ f, i }))
+    .filter((x) => x.f.title !== 'Connect Google Calendar')
+    .map(({ f, i }) => `
     <div class="locked-card" onclick="openUpsell(${i})">
       <span class="lc-lock">🔒</span>
       <div class="lc-title">${esc(f.title)}</div>

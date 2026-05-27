@@ -119,6 +119,85 @@ module.exports = async (req, res) => {
       }
       const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'stylist_add') {
+      const name = (data && typeof data.name === 'string') ? data.name.trim() : '';
+      if (!name) { res.status(400).json({ error: 'Name required' }); return; }
+      const photo = (data && data.photo_url) ? String(data.photo_url).trim() : null;
+      if (photo && !/^https:\/\/res\.cloudinary\.com\//i.test(photo)) {
+        res.status(400).json({ error: 'Photo URL must come from Cloudinary' });
+        return;
+      }
+      const { count, error: cErr } = await supabase
+        .from('stylists').select('id', { count: 'exact', head: true }).eq('business_id', businessId);
+      if (cErr) { res.status(500).json({ error: cErr.message }); return; }
+      const { data: ins, error } = await supabase
+        .from('stylists')
+        .insert({ business_id: businessId, name, photo_url: photo, sort_order: count || 0 })
+        .select('id, name, photo_url, sort_order')
+        .single();
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      res.status(200).json({ success: true, stylist: ins });
+      return;
+    } else if (type === 'stylist_update') {
+      const id = data && data.stylist_id;
+      if (!id) { res.status(400).json({ error: 'stylist_id required' }); return; }
+      const { data: existing, error: lErr } = await supabase
+        .from('stylists').select('id, business_id').eq('id', id).maybeSingle();
+      if (lErr) { res.status(500).json({ error: lErr.message }); return; }
+      if (!existing || existing.business_id !== businessId) {
+        res.status(403).json({ error: 'Stylist not found' });
+        return;
+      }
+      const patch = {};
+      if (typeof data.name === 'string') {
+        const n = data.name.trim();
+        if (!n) { res.status(400).json({ error: 'Name cannot be empty' }); return; }
+        patch.name = n;
+      }
+      if (data.photo_url !== undefined) {
+        const raw = data.photo_url;
+        const url = raw == null ? null : String(raw).trim();
+        const value = url === '' ? null : url;
+        if (value && !/^https:\/\/res\.cloudinary\.com\//i.test(value)) {
+          res.status(400).json({ error: 'Photo URL must come from Cloudinary' });
+          return;
+        }
+        patch.photo_url = value;
+      }
+      if (Object.keys(patch).length === 0) {
+        res.status(400).json({ error: 'Nothing to update' });
+        return;
+      }
+      const { error } = await supabase.from('stylists').update(patch).eq('id', id).eq('business_id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'stylist_delete') {
+      const id = data && data.stylist_id;
+      if (!id) { res.status(400).json({ error: 'stylist_id required' }); return; }
+      const { data: existing, error: lErr } = await supabase
+        .from('stylists').select('id, business_id').eq('id', id).maybeSingle();
+      if (lErr) { res.status(500).json({ error: lErr.message }); return; }
+      if (!existing || existing.business_id !== businessId) {
+        res.status(403).json({ error: 'Stylist not found' });
+        return;
+      }
+      const { error } = await supabase.from('stylists').delete().eq('id', id).eq('business_id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'stylist_reorder') {
+      const order = (data && Array.isArray(data.order)) ? data.order : null;
+      if (!order) { res.status(400).json({ error: 'order array required' }); return; }
+      const { data: rows, error: lErr } = await supabase
+        .from('stylists').select('id').eq('business_id', businessId);
+      if (lErr) { res.status(500).json({ error: lErr.message }); return; }
+      const owned = new Set((rows || []).map(r => r.id));
+      if (order.length !== owned.size || !order.every(id => owned.has(id))) {
+        res.status(400).json({ error: 'order must contain exactly this business\'s stylists' });
+        return;
+      }
+      for (let i = 0; i < order.length; i++) {
+        const { error } = await supabase
+          .from('stylists').update({ sort_order: i }).eq('id', order[i]).eq('business_id', businessId);
+        if (error) { res.status(500).json({ error: error.message }); return; }
+      }
     } else if (type === 'booking_status') {
       const allowed = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
       if (!data.bookingId || !allowed.includes(data.status)) {
