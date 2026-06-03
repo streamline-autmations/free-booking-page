@@ -1,32 +1,40 @@
 -- add-client.sql
--- Run this in Supabase SQL Editor for each new salon
--- Replace all CAPS values with actual data
+-- Run this in the Supabase SQL Editor to onboard a new salon by hand.
+-- Replace all CAPS values. (Workflow B2 does the same thing automatically.)
+-- After this runs the tenant's page is immediately usable: a real SA service
+-- menu is seeded and slot logic (30-min granularity, Mon–Sat 8–17) is set.
 
--- Add new business
-INSERT INTO businesses (id, name, tagline, accent_color, accent_dark, owner_email, phone, admin_pin_hash, webhook_url, working_days, working_hours, slot_interval, advance_days)
+-- 1) Create the business with sane day-one defaults.
+INSERT INTO public.businesses (
+  id, name, tagline, accent_color, accent_dark, owner_email, phone,
+  admin_pin_hash, webhook_url, working_days, working_hours, slot_interval,
+  advance_days, same_day
+)
 VALUES (
-  'BUSINESS-ID-HYPHENATED',  -- e.g., 'true-reflection-nails'
-  'BUSINESS NAME',            -- e.g., 'True Reflection Nails'
-  'TAGLINE',                  -- e.g., 'Professional nail care in Sandton'
-  '#ACCENT_COLOR_HEX',        -- e.g., '#c084fc'
-  '#ACCENT_DARK_HEX',         -- e.g., '#9333ea'
-  'OWNER@EMAIL.COM',          -- e.g., 'owner@salon.co.za'
-  'PHONE NUMBER',             -- e.g., '+27 71 234 5678'
-  encode(digest('4DIGIT_PIN', 'sha256'), 'hex'),  -- e.g., '1234'
-  'YOUR_N8N_WEBHOOK_URL',     -- e.g., 'https://webhook.site/xxx...' or ''
-  '[1,2,3,4,5,6]',            -- working days (0=Sun, 1=Mon, etc.)
+  'BUSINESS-ID-HYPHENATED',   -- e.g. 'true-reflection-nails'  (this is the ?biz= slug)
+  'BUSINESS NAME',            -- e.g. 'True Reflection Nails'
+  'TAGLINE',                  -- e.g. 'Professional nail care in Sandton'
+  '#A8456B',                  -- accent (pick from the admin palette)
+  '#8a3458',                  -- accent dark
+  'OWNER@EMAIL.COM',          -- owner email (gets the new-booking notification)
+  'PHONE NUMBER',             -- e.g. '+27 71 234 5678'
+  encode(digest('4DIGIT_PIN', 'sha256'), 'hex'),  -- admin PIN, e.g. '1234'
+  '',                         -- optional n8n webhook URL
+  '[1,2,3,4,5,6]',            -- working days (0=Sun … 6=Sat) → Mon–Sat
   '{"start":8,"end":17}',     -- working hours
-  30,                         -- slot interval in minutes
-  30                          -- advance booking days
+  30,                         -- 30-minute slot granularity
+  30,                         -- advance booking window (days)
+  true                        -- allow same-day bookings
 );
 
--- Add services for this business
-INSERT INTO services (business_id, name, duration, price, sort_order) VALUES
-  ('BUSINESS-ID-HYPHENATED', 'SERVICE 1', 60, 'RPRICE', 1),
-  ('BUSINESS-ID-HYPHENATED', 'SERVICE 2', 90, 'RPRICE', 2),
-  ('BUSINESS-ID-HYPHENATED', 'SERVICE 3', 30, 'RPRICE', 3);
+-- 2) Seed the SA service presets for the salon's niche so the page is usable
+--    the moment it's delivered. Niche is one of:
+--    'nails' | 'lashes' | 'hair' | 'brows' | 'spa' | 'barber'
+--    (see supabase/migrations/002_seed_service_presets.sql for the menus).
+SELECT public.seed_service_presets('BUSINESS-ID-HYPHENATED', 'NICHE');
 
--- After running, the salon can be accessed at:
--- Booking: https://your-domain.com/?biz=BUSINESS-ID-HYPHENATED
--- Admin:   https://your-domain.com/admin?biz=BUSINESS-ID-HYPHENATED
--- PIN:     4DIGIT_PIN (from admin_pin_hash above)
+-- After running:
+--   Booking: https://booking-page-beta.vercel.app/?biz=BUSINESS-ID-HYPHENATED
+--   Admin:   https://booking-page-beta.vercel.app/admin?biz=BUSINESS-ID-HYPHENATED
+--   PIN:     the 4DIGIT_PIN you hashed above
+-- The owner can then rename/retune services in the admin Services tab.

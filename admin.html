@@ -899,7 +899,7 @@
   </header>
 
   <nav class="admin-tabs">
-    <button class="tab-btn active" onclick="switchTab('bookings', this)">Bookings</button>
+    <button class="tab-btn active" onclick="switchTab('bookings', this)">Bookings<span id="bookings-badge" style="display:none;margin-left:6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;vertical-align:middle"></span></button>
     <button class="tab-btn"        onclick="switchTab('services', this)">Services</button>
     <button class="tab-btn"        onclick="switchTab('team', this)">Team</button>
     <button class="tab-btn"        onclick="switchTab('hours', this)">Hours</button>
@@ -1173,6 +1173,7 @@ let CONFIG = null;
 let supabaseClient = null;
 let SERVICES = [];
 let STYLISTS = [];
+let CURRENT_BOOKINGS = []; // last loaded bookings — powers the new-booking tab badge
 
 function getBusinessIdFromUrl() {
   const p = new URLSearchParams(window.location.search);
@@ -1923,6 +1924,8 @@ async function renderBookings() {
   }
 
   if (!bookings || bookings.length === 0) {
+    CURRENT_BOOKINGS = [];
+    updateBookingsBadge();
     el.innerHTML = `
       <div class="bookings-placeholder">
         <div class="bookings-icon">📋</div>
@@ -1932,6 +1935,7 @@ async function renderBookings() {
     return;
   }
 
+  CURRENT_BOOKINGS = bookings;
   const today = todayISO();
   const weekEnd = weekEndISO();
   const live = b => b.status !== 'cancelled' && b.status !== 'no_show';
@@ -1944,6 +1948,26 @@ async function renderBookings() {
   }, 0);
 
   const fmtR = n => n >= 1000 ? `R${(n/1000).toFixed(1)}k` : `R${Math.round(n)}`;
+
+  // ── Lifetime value counter — quantifies what the free page has handled.
+  // "Bookings taken" = every booking ever logged for this business.
+  // "In bookings handled" = sum of priced bookings that weren't cancelled/no-show.
+  const priceOf = b => Number(String(b.price || '').replace(/[^\d.]/g, '')) || 0;
+  const bookingsTaken = bookings.length;
+  const valueHandled  = bookings.filter(live).reduce((sum, b) => sum + priceOf(b), 0);
+  const fmtRand = n => 'R' + Math.round(n).toLocaleString('en-ZA');
+
+  // New-booking badge on the Bookings tab (pending + still upcoming).
+  updateBookingsBadge();
+
+  const valueCounter = `
+    <div style="background:linear-gradient(135deg,var(--accent-tint),var(--surface));border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">Your free Streamline page so far</div>
+      <div style="display:flex;align-items:baseline;gap:22px;flex-wrap:wrap">
+        <div><span style="font-size:26px;font-weight:700;color:var(--text-1)">${bookingsTaken}</span> <span style="font-size:13px;color:var(--text-2)">${bookingsTaken === 1 ? 'booking taken' : 'bookings taken'}</span></div>
+        <div><span style="font-size:26px;font-weight:700;color:var(--text-1)">~${fmtRand(valueHandled)}</span> <span style="font-size:13px;color:var(--text-2)">in bookings handled</span></div>
+      </div>
+    </div>`;
 
   const glance = `
     <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin-bottom:16px">
@@ -1996,7 +2020,24 @@ async function renderBookings() {
   const banner = offline
     ? `<div class="empty-state" style="margin-bottom:12px;color:var(--text-2)">📴 Offline — showing your last saved bookings.</div>`
     : '';
-  el.innerHTML = banner + glance + cards;
+  el.innerHTML = banner + valueCounter + glance + cards;
+}
+
+// Count of new bookings still needing the owner's attention (pending + upcoming),
+// shown as a red badge on the Bookings tab. Derived purely from Supabase data.
+function updateBookingsBadge() {
+  const badge = document.getElementById('bookings-badge');
+  if (!badge) return;
+  const today = todayISO();
+  const n = (CURRENT_BOOKINGS || []).filter(
+    b => b.status === 'pending' && b.booking_date >= today
+  ).length;
+  if (n > 0) {
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 async function setBookingStatus(id, status) {
@@ -2011,27 +2052,42 @@ async function setBookingStatus(id, status) {
     badge.style.color = sc;
     badge.style.background = sc + '18';
   }
+  // Keep the tab badge in sync without a full refetch.
+  const b = (CURRENT_BOOKINGS || []).find(x => String(x.id) === String(id));
+  if (b) b.status = status;
+  updateBookingsBadge();
   toast('Status updated ✓');
 }
 
 /* ----------------------------------------------------------------
    MORE TAB — branding (free) + premium upsell (locked)
    ---------------------------------------------------------------- */
-/* Wording kept consistent with Workflow F's booking-triggered upsell. */
+/* Premium upsell catalogue. The eight `headline:true` cards use the EXACT
+   labels from the Streamline offer sheet and fill the premium grid. The rest
+   back contextual gates (Calendar hero, add-service cap, Block-time tab,
+   custom-colour swatch) and keep their titles so openUpsellByTitle() resolves.
+   Tier wording mirrors Workflow F's booking-triggered upsell. */
+const TIERS = {
+  booster:     { name: 'Booking Booster',              price: 'from R2,500 once-off or R699/mo' },
+  magnet:      { name: 'Client Magnet (most popular)', price: 'from R12,000 + R1,199/mo' },
+  accelerator: { name: 'Business Accelerator',         price: 'R25,000 + R2,499/mo' },
+};
 const LOCKED_FEATURES = [
-  { title: 'Connect Google Calendar', benefit: 'Every booking lands in your Google Calendar automatically. Blocks sync both ways so the page never double-books.' },
-  { title: 'Push notifications',   benefit: 'Ping your phone the second a booking comes in — never miss a new appointment.' },
-  { title: 'Unlimited services',   benefit: 'Free plan caps at 5 services. Upgrade to list everything you offer.' },
-  { title: 'Block time off',       benefit: 'Block holidays, lunch breaks, or specific time slots so customers can\'t book them.' },
-  { title: 'Custom brand colour',  benefit: 'Pick any colour for your booking page — not just the preset palette.' },
-  { title: 'Take deposits',        benefit: 'Require a deposit before clients can book — kills no-shows.' },
-  { title: 'Auto reminders',       benefit: 'Automatic WhatsApp + email reminders before every appointment.' },
-  { title: 'Custom domain',        benefit: 'Use your own domain instead of the shared link.' },
-  { title: 'Remove branding',      benefit: 'White-label the page so it\'s fully yours.' },
-  { title: 'Analytics',            benefit: 'See your busiest times, revenue, and repeat clients.' },
-  { title: 'Customer database',    benefit: 'Rebook reminders, birthday offers, marketing to past clients.' },
-  { title: 'Online store',         benefit: 'Sell products, vouchers, and packages online.' },
-  { title: 'Multiple staff',       benefit: 'A separate calendar for each team member.' },
+  // ── The 8 headline premium cards — labels are verbatim from the offer ──
+  { title: 'Take deposits before booking',                          benefit: 'Require a deposit before clients can lock in a slot — kills no-shows and protects your day.',          tier: TIERS.booster,     headline: true },
+  { title: 'Auto WhatsApp + email reminders',                       benefit: 'Automatic WhatsApp and email reminders before every appointment, so clients actually show up.',       tier: TIERS.booster,     headline: true },
+  { title: 'Your own custom domain',                                benefit: 'Use your own web address instead of the shared Streamline link.',                                     tier: TIERS.booster,     headline: true },
+  { title: 'Remove Streamline branding (white-label)',              benefit: 'White-label the whole page so it reads as 100% yours — no "Powered by Streamline" footer.',           tier: TIERS.booster,     headline: true },
+  { title: 'Analytics (busiest times, revenue, repeat clients)',    benefit: 'See your busiest times, revenue trends, and who your repeat clients are.',                            tier: TIERS.accelerator, headline: true },
+  { title: 'Customer database (rebook reminders, birthday offers)', benefit: 'Keep every client on file with rebook nudges and birthday offers that bring them back.',              tier: TIERS.accelerator, headline: true },
+  { title: 'Online store (products, vouchers, packages)',           benefit: 'Sell products, gift vouchers, and prepaid packages straight from your page.',                        tier: TIERS.accelerator, headline: true },
+  { title: 'Multiple staff calendars',                              benefit: 'A separate calendar for each team member so the whole salon books in one place.',                     tier: TIERS.magnet,      headline: true },
+  // ── Contextual gates + Calendar hero — kept for openUpsellByTitle(), hidden from the grid ──
+  { title: 'Connect Google Calendar', benefit: 'Every booking lands in your Google Calendar automatically. Blocks sync both ways so the page never double-books.', tier: TIERS.magnet },
+  { title: 'Push notifications',   benefit: 'Ping your phone the second a booking comes in — never miss a new appointment.', tier: TIERS.booster },
+  { title: 'Unlimited services',   benefit: 'Free plan caps at 5 services. Upgrade to list everything you offer.', tier: TIERS.booster },
+  { title: 'Block time off',       benefit: 'Block holidays, lunch breaks, or specific time slots so customers can\'t book them.', tier: TIERS.booster },
+  { title: 'Custom brand colour',  benefit: 'Pick any colour for your booking page — not just the preset palette.', tier: TIERS.booster },
 ];
 const STREAMLINE_WA = '27837797935';
 
@@ -2080,11 +2136,12 @@ function renderMore() {
   if (ig) ig.value = CONFIG.instagramUrl || '';
   if (fb) fb.value = CONFIG.facebookUrl  || '';
 
-  // Calendar Connect gets the hero card above — exclude from the grid so it
-  // doesn't appear twice.
+  // The grid shows exactly the 8 headline offer features. Calendar Connect is
+  // the hero card above; the other contextual gates live in LOCKED_FEATURES
+  // only so openUpsellByTitle() can resolve them.
   document.getElementById('locked-grid').innerHTML = LOCKED_FEATURES
     .map((f, i) => ({ f, i }))
-    .filter((x) => x.f.title !== 'Connect Google Calendar')
+    .filter((x) => x.f.headline)
     .map(({ f, i }) => `
     <div class="locked-card" onclick="openUpsell(${i})">
       <span class="lc-lock">🔒</span>
@@ -2101,9 +2158,11 @@ function renderMore() {
 function openUpsell(i) {
   const f = LOCKED_FEATURES[i];
   document.getElementById('upsell-title').textContent = f.title;
+  const tierLine = f.tier ? ` It's part of ${f.tier.name} — ${f.tier.price}.` : '';
   document.getElementById('upsell-body').textContent =
-    `${f.benefit} Want it unlocked for ${CONFIG.businessName}? Chat to Christiaan and he'll sort it.`;
-  const msg = `Hi Christiaan, I'd like to unlock "${f.title}" on my ${CONFIG.businessName} booking app.`;
+    `${f.benefit}${tierLine} Want it on ${CONFIG.businessName}? Chat to Christiaan and he'll sort it.`;
+  // Prefill a WhatsApp message that names this specific feature.
+  const msg = `Hi Christiaan, I'd like to add "${f.title}" to my ${CONFIG.businessName} booking page.`;
   document.getElementById('upsell-wa').href = `https://wa.me/${STREAMLINE_WA}?text=${encodeURIComponent(msg)}`;
   document.getElementById('upsell-modal').classList.add('open');
 }

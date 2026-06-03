@@ -824,9 +824,9 @@
   <div class="container">
     <div class="footer-biz"  id="footer-biz"></div>
     <div class="footer-social" id="footer-social"></div>
-    <div class="footer-pow">
-      Booking by <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">Streamline</a>
-      &middot; streamline.automations
+    <div class="footer-pow" id="footer-pow">
+      Powered by <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">Streamline</a>
+      &middot; <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">want a page like this?</a>
     </div>
   </div>
 </footer>
@@ -965,6 +965,7 @@ async function loadBusinessData() {
     phone: business.phone || '',
     instagramUrl: business.instagram_url || '',
     facebookUrl:  business.facebook_url  || '',
+    showStreamlinePromo: business.show_streamline_promo !== false, // white-label hides the powered-by footer
     services: (services || []).map(s => ({
       id: s.id,
       name: s.name,
@@ -1118,6 +1119,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const biz = document.getElementById('footer-biz');
   biz.innerHTML = CONFIG.businessName + (CONFIG.phone ? ` · <span class="footer-phone">${CONFIG.phone}</span>` : '');
+
+  // White-label businesses (premium "Remove Streamline branding") hide the powered-by line.
+  const pow = document.getElementById('footer-pow');
+  if (pow) pow.style.display = (CONFIG.showStreamlinePromo === false) ? 'none' : '';
 
   // Socials: business sets their own via admin; defaults to Streamline as a thank-you.
   const SL_IG = 'https://instagram.com/streamline_automations';
