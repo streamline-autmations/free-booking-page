@@ -1,14 +1,13 @@
 // api/send-booking-emails.js
-// Sends two booking-confirmation emails (customer + salon owner) via Resend.
+// Sends two booking-confirmation emails (customer + salon owner) via Brevo.
 // Called by the public booking page right after the bookings row is inserted.
 // Idempotency: bookings.email_sent_at is set on success so repeat calls no-op.
 //
 // Env required:
-//   RESEND_API_KEY       — from resend.com (free tier covers our test volume)
-//   RESEND_FROM          — e.g. "Streamline Bookings <bookings@streamline-automations.agency>"
-//                          (must be a sender on a domain you verified in Resend)
-//   PUBLIC_BASE_URL      — e.g. "https://booking-page-beta.vercel.app" (for admin link in owner email)
-// If RESEND_API_KEY is missing the function still returns 200 with {skipped:true}
+//   BREVO_API_KEY        — from app.brevo.com → SMTP & API → API Keys
+//   BREVO_FROM           — e.g. "Streamline Bookings <noreply@streamline-automations.co.za>"
+//   PUBLIC_BASE_URL      — e.g. "https://book.streamline-automations.co.za" (for admin link in owner email)
+// If BREVO_API_KEY is missing the function still returns 200 with {skipped:true}
 // so the booking flow on the public page never fails because email isn't set up yet.
 
 const { getSupabase, readBody } = require('./_auth');
@@ -110,12 +109,25 @@ function ownerEmailHtml(b, biz, adminUrl) {
 }
 
 async function sendEmail({ apiKey, from, to, reply_to, subject, html, attachments }) {
-  const body = { from, to: Array.isArray(to) ? to : [to], subject, html };
-  if (reply_to) body.reply_to = reply_to;
-  if (attachments && attachments.length) body.attachments = attachments;
-  const r = await fetch('https://api.resend.com/emails', {
+  // Parse "Name <email>" sender string into Brevo's { name, email } object.
+  const parseSender = (s) => {
+    const m = String(s).match(/^(.*?)\s*<([^>]+)>$/);
+    return m ? { name: m[1].trim(), email: m[2].trim() } : { email: String(s).trim() };
+  };
+  const toList = (Array.isArray(to) ? to : [to]).map(e => ({ email: e }));
+  const body = {
+    sender: parseSender(from),
+    to: toList,
+    subject,
+    htmlContent: html,
+  };
+  if (reply_to) body.replyTo = { email: reply_to };
+  if (attachments && attachments.length) {
+    body.attachment = attachments.map(a => ({ content: a.content, name: a.filename }));
+  }
+  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const j = await r.json().catch(() => ({}));
@@ -129,16 +141,16 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    const from   = process.env.RESEND_FROM || 'Streamline <onboarding@resend.dev>';
-    const base   = process.env.PUBLIC_BASE_URL || 'https://booking-page-beta.vercel.app';
+    const apiKey = process.env.BREVO_API_KEY;
+    const from   = process.env.BREVO_FROM || 'Streamline Bookings <noreply@streamline-automations.co.za>';
+    const base   = process.env.PUBLIC_BASE_URL || 'https://book.streamline-automations.co.za';
 
     const { bookingId } = readBody(req);
     if (!bookingId) { res.status(400).json({ error: 'bookingId required' }); return; }
 
     if (!apiKey) {
       // Don't block bookings just because email isn't configured yet.
-      res.status(200).json({ skipped: true, reason: 'RESEND_API_KEY not set' });
+      res.status(200).json({ skipped: true, reason: 'BREVO_API_KEY not set' });
       return;
     }
 
