@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create your free booking page · Streamline</title>
+  <meta name="description" content="Get your own free salon booking page and admin dashboard in under a minute." />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Cloudflare Turnstile (free captcha) -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>
+    :root {
+      --accent:#A8456B; --accent-dark:#8a3458;
+      --accent-tint:rgba(168,69,107,0.07); --accent-soft:rgba(168,69,107,0.14); --accent-focus:rgba(168,69,107,0.22);
+      --bg:#FAF8F5; --surface:#fff; --neutral:#F2EEE8; --border:#E8E2D9; --border-strong:#D9D1C5;
+      --text-1:#1B1815; --text-2:#6B6258; --text-3:#A39A8E;
+      --radius:16px; --radius-sm:10px;
+      --shadow:0 1px 2px rgba(27,24,21,0.04),0 2px 6px rgba(27,24,21,0.05);
+      --shadow-md:0 4px 18px rgba(27,24,21,0.08);
+      --serif:'Cormorant Garamond',Georgia,serif; --ease:cubic-bezier(0.4,0,0.2,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text-1);line-height:1.6;font-size:15px;-webkit-font-smoothing:antialiased;}
+    .container{max-width:560px;margin:0 auto;padding:0 20px;}
+
+    header.hero{text-align:center;padding:48px 0 8px;}
+    .eyebrow{font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;}
+    h1{font-family:var(--serif);font-size:40px;font-weight:500;letter-spacing:-0.01em;line-height:1.08;color:var(--text-1);}
+    .sub{color:var(--text-2);font-size:15px;margin:12px auto 0;max-width:420px;}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 24px;margin:28px 0 16px;}
+
+    .form-group{margin-bottom:16px;}
+    .row{display:flex;gap:12px;}
+    .row > .form-group{flex:1;}
+    .form-label{display:block;font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:6px;}
+    .form-label .opt{color:var(--text-3);font-weight:400;}
+    .form-input,select.form-input{
+      width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);
+      font-family:inherit;font-size:16px;color:var(--text-1);background:var(--surface);
+      transition:border-color .2s var(--ease),box-shadow .2s var(--ease);outline:none;min-height:52px;-webkit-appearance:none;
+    }
+    select.form-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23A39A8E' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 18px center;padding-right:40px;}
+    .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-focus);}
+    .form-input.err{border-color:#ef4444;}
+    .hint{font-size:12px;color:var(--text-3);margin-top:5px;}
+
+    /* accent swatches */
+    .swatches{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
+    .swatch{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s var(--ease);}
+    .swatch:hover{transform:scale(1.08);}
+    .swatch.sel{border-color:var(--text-1);box-shadow:0 0 0 2px var(--surface) inset;}
+
+    /* logo upload */
+    .logo-up{display:flex;align-items:center;gap:14px;}
+    .logo-prev{width:56px;height:56px;border-radius:12px;background:var(--neutral);border:1px solid var(--border);object-fit:contain;display:none;}
+    .logo-btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--surface);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;}
+
+    /* consent */
+    .consent{display:flex;gap:11px;align-items:flex-start;margin:6px 0 4px;}
+    .consent input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0;}
+    .consent label{font-size:13px;color:var(--text-2);line-height:1.5;}
+    .consent a{color:var(--accent);}
+
+    /* honeypot — visually hidden, off-screen, not display:none (bots skip those) */
+    .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+
+    .turnstile-wrap{margin:18px 0 6px;display:flex;justify-content:center;min-height:0;}
+
+    .submit-btn{width:100%;padding:18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:background .2s var(--ease),transform .1s var(--ease);}
+    .submit-btn:hover{background:var(--accent-dark);}
+    .submit-btn:active{transform:scale(0.99);}
+    .submit-btn:disabled{opacity:0.6;cursor:not-allowed;}
+
+    .err-banner{display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:12px 14px;border-radius:var(--radius-sm);margin-bottom:14px;}
+    .err-banner.show{display:block;}
+
+    .follow{text-align:center;margin:10px 0 0;font-size:13px;color:var(--text-3);}
+    .follow a{color:var(--accent);font-weight:600;text-decoration:none;}
+
+    footer{text-align:center;color:var(--text-3);font-size:11px;letter-spacing:0.04em;padding:24px 0 40px;}
+    footer a{color:var(--text-3);}
+
+    /* success */
+    #success{display:none;}
+    .tick{width:60px;height:60px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:30px;}
+    .link-block{background:var(--neutral);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin:12px 0;}
+    .link-block .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:4px;}
+    .link-block a{color:var(--accent);font-weight:600;font-size:15px;word-break:break-all;text-decoration:none;}
+    .pin-block{text-align:center;background:var(--surface);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:16px;margin:12px 0;}
+    .pin-block .pin{font-size:34px;font-weight:700;letter-spacing:0.2em;color:var(--text-1);}
+    .copy-btn{background:none;border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;margin-top:8px;}
+    .a2hs{font-size:13px;color:var(--text-2);line-height:1.7;margin-top:6px;}
+    .share-btn{width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
+    .ghost-btn{display:block;text-align:center;width:100%;padding:15px;background:var(--surface);border:1px solid var(--border-strong);color:var(--text-1);border-radius:var(--radius-sm);font-size:15px;font-weight:600;text-decoration:none;margin-top:10px;}
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:6px;}
+    @keyframes sp{to{transform:rotate(360deg);}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="eyebrow">Streamline · Free booking page</div>
+      <h1>Your salon, bookable<br>in under a minute</h1>
+      <p class="sub">Fill this in and you'll instantly get your own booking page and a private admin dashboard. No card, no catch.</p>
+    </header>
+
+    <!-- ============ FORM ============ -->
+    <form id="signup-form" class="card" novalidate>
+      <div class="err-banner" id="err-banner"></div>
+
+      <div class="form-group">
+        <label class="form-label" for="businessName">Salon name</label>
+        <input class="form-input" id="businessName" name="businessName" autocomplete="organization" placeholder="e.g. Glow Bar" required />
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label class="form-label" for="ownerName">Your name</label>
+          <input class="form-input" id="ownerName" name="ownerName" autocomplete="name" placeholder="e.g. Thandi" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="niche">What you do</label>
+          <select class="form-input" id="niche" name="niche" required>
+            <option value="" disabled selected>Choose…</option>
+            <option value="nails">Nails</option>
+            <option value="lashes">Lashes</option>
+            <option value="hair">Hair</option>
+            <option value="brows">Brows</option>
+            <option value="spa">Spa &amp; beauty</option>
+            <option value="barber">Barber</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:-8px;margin-bottom:14px;">We'll pre-load a starter menu for your type — you can edit every price later.</p>
+
+      <div class="row">
+        <div class="form-group">
+          <label class="form-label" for="suburb">Suburb / area</label>
+          <input class="form-input" id="suburb" name="suburb" placeholder="e.g. Sandton" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="whatsapp">WhatsApp number</label>
+          <input class="form-input" id="whatsapp" name="whatsapp" inputmode="tel" autocomplete="tel" placeholder="e.g. 071 234 5678" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Email <span class="opt">(we'll send your links + PIN here)</span></label>
+        <input class="form-input" id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@salon.co.za" required />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="instagram">Instagram handle <span class="opt">— optional</span></label>
+        <input class="form-input" id="instagram" name="instagram" placeholder="@yoursalon" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Logo <span class="opt">— optional</span></label>
+        <div class="logo-up">
+          <img class="logo-prev" id="logo-prev" alt="" />
+          <label class="logo-btn" for="logo">Upload logo</label>
+          <input type="file" id="logo" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+          <span class="hint" id="logo-name"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Brand colour <span class="opt">— optional</span></label>
+        <div class="swatches" id="swatches">
+          <span class="swatch sel" data-c="#A8456B" style="background:#A8456B"></span>
+          <span class="swatch" data-c="#3FA7D6" style="background:#3FA7D6"></span>
+          <span class="swatch" data-c="#6C63B5" style="background:#6C63B5"></span>
+          <span class="swatch" data-c="#2E9E78" style="background:#2E9E78"></span>
+          <span class="swatch" data-c="#C9844B" style="background:#C9844B"></span>
+          <span class="swatch" data-c="#1B1815" style="background:#1B1815"></span>
+        </div>
+      </div>
+
+      <!-- honeypot: humans never see/fill this -->
+      <div class="hp" aria-hidden="true">
+        <label>Company URL<input type="text" name="company_url" id="company_url" tabindex="-1" autocomplete="off" /></label>
+      </div>
+
+      <div class="consent">
+        <input type="checkbox" id="consent" name="consent" />
+        <label for="consent">I agree to Streamline contacting me about my booking page. See our <a href="https://streamline-automations.agency/privacy" target="_blank" rel="noopener">privacy policy</a>. You can opt out anytime.</label>
+      </div>
+
+      <div class="turnstile-wrap">
+        <div class="cf-turnstile" id="turnstile" data-sitekey="0x4AAAAAADhLTme-MzBGF5ZBok" data-theme="light"></div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">Create my booking page</button>
+    </form>
+
+    <p class="follow">Want more bookings? <a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener">Follow @streamline_automations</a> for salon tips.</p>
+
+    <!-- ============ SUCCESS ============ -->
+    <div class="card" id="success">
+      <div class="tick">✓</div>
+      <h1 style="font-size:30px;text-align:center;">You're live! 🎉</h1>
+      <p class="sub" style="text-align:center;margin-bottom:20px;">We've emailed everything below — keep it safe.</p>
+
+      <div class="link-block">
+        <div class="lbl">Your booking page</div>
+        <a id="s-public" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <div class="link-block">
+        <div class="lbl">Your admin dashboard</div>
+        <a id="s-admin" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <div class="pin-block">
+        <div class="lbl" style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Admin PIN</div>
+        <div class="pin" id="s-pin"></div>
+        <button class="copy-btn" id="copy-pin" type="button">Copy PIN</button>
+      </div>
+
+      <p class="a2hs">
+        <strong>Add it to your phone:</strong> open your booking page, tap <em>Share</em> →
+        <em>Add to Home&nbsp;Screen</em>. It'll work just like an app.
+      </p>
+
+      <button class="share-btn" id="share-btn" type="button">Share your new page 🎉</button>
+      <a class="ghost-btn" id="open-admin" href="#" target="_blank" rel="noopener">Open my dashboard</a>
+      <p class="follow" style="margin-top:16px;"><a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener">Follow @streamline_automations</a> for salon tips →</p>
+    </div>
+
+    <footer>
+      Booking by <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">Streamline</a>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('signup-form');
+    const errBanner = document.getElementById('err-banner');
+    const submitBtn = document.getElementById('submit-btn');
+    let accentColour = '#A8456B';
+    let logoDataUrl = null;
+
+    // accent swatches
+    document.getElementById('swatches').addEventListener('click', (e) => {
+      const sw = e.target.closest('.swatch');
+      if (!sw) return;
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('sel'));
+      sw.classList.add('sel');
+      accentColour = sw.dataset.c;
+    });
+
+    // logo → dataURL preview
+    document.getElementById('logo').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      if (f.size > 2 * 1024 * 1024) { showErr('That logo is over 2MB — please pick a smaller image.'); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        logoDataUrl = reader.result;
+        const prev = document.getElementById('logo-prev');
+        prev.src = logoDataUrl; prev.style.display = 'block';
+        document.getElementById('logo-name').textContent = f.name;
+      };
+      reader.readAsDataURL(f);
+    });
+
+    function showErr(msg) {
+      errBanner.textContent = msg;
+      errBanner.classList.add('show');
+      errBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function clearErr() { errBanner.classList.remove('show'); }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErr();
+
+      const val = (id) => document.getElementById(id).value.trim();
+      const payload = {
+        businessName: val('businessName'),
+        ownerName: val('ownerName'),
+        niche: document.getElementById('niche').value,
+        suburb: val('suburb'),
+        whatsapp: val('whatsapp'),
+        email: val('email'),
+        instagram: val('instagram') || null,
+        accentColour,
+        logoDataUrl,
+        consent: document.getElementById('consent').checked,
+        company_url: document.getElementById('company_url').value, // honeypot
+        turnstileToken: (document.querySelector('[name="cf-turnstile-response"]') || {}).value || '',
+      };
+
+      // light client-side guards (server re-validates)
+      if (!payload.businessName || !payload.ownerName || !payload.niche || !payload.suburb || !payload.whatsapp || !payload.email) {
+        showErr('Please fill in all the required fields.'); return;
+      }
+      if (!payload.consent) { showErr('Please tick the consent box so we can set up your page.'); return; }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spin"></span>Creating your page…';
+      try {
+        const r = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) {
+          showErr(data.error || 'Something went wrong. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create my booking page';
+          if (window.turnstile) { try { turnstile.reset(); } catch (_) {} }
+          return;
+        }
+        showSuccess(data);
+      } catch (err) {
+        showErr('Network error. Please check your connection and try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create my booking page';
+      }
+    });
+
+    function showSuccess(data) {
+      const pub = document.getElementById('s-public');
+      pub.href = data.publicUrl; pub.textContent = data.publicUrl;
+      const adm = document.getElementById('s-admin');
+      adm.href = data.adminUrl; adm.textContent = data.adminUrl;
+      document.getElementById('open-admin').href = data.adminUrl;
+      document.getElementById('s-pin').textContent = data.pin;
+
+      document.getElementById('copy-pin').addEventListener('click', () => {
+        navigator.clipboard?.writeText(data.pin);
+        document.getElementById('copy-pin').textContent = 'Copied ✓';
+      });
+      document.getElementById('share-btn').addEventListener('click', async () => {
+        const shareData = { title: 'Book with us', text: 'Book your appointment online 💅', url: data.publicUrl };
+        if (navigator.share) { try { await navigator.share(shareData); } catch (_) {} }
+        else { navigator.clipboard?.writeText(data.publicUrl); document.getElementById('share-btn').textContent = 'Link copied ✓'; }
+      });
+
+      form.style.display = 'none';
+      document.querySelector('.follow').style.display = 'none';
+      document.querySelector('.hero .sub').textContent = '';
+      document.querySelector('.hero h1').textContent = '';
+      document.querySelector('.hero .eyebrow').textContent = '';
+      document.getElementById('success').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
