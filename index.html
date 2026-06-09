@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book Online</title>
   <link rel="icon" id="favicon" href="" />
+  <!-- Premium "add to home screen": these stay empty for free salons; the booking
+       page only fills them in (and registers the SW) when the salon is premium. -->
+  <link rel="manifest" id="pwa-manifest" href="" />
+  <link rel="apple-touch-icon" id="pwa-apple-icon" href="" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" id="pwa-apple-title" content="" />
+  <meta name="theme-color" id="pwa-theme" content="" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -966,6 +974,7 @@ async function loadBusinessData() {
     instagramUrl: business.instagram_url || '',
     facebookUrl:  business.facebook_url  || '',
     showStreamlinePromo: business.show_streamline_promo !== false, // white-label hides the powered-by footer
+    isPremium: business.is_premium === true, // gates the "add to home screen" perk
     services: (services || []).map(s => ({
       id: s.id,
       name: s.name,
@@ -1008,7 +1017,8 @@ function useDefaultConfig() {
     slotIntervalMinutes: 30,
     advanceBookingDays: 30,
     sameDayBooking: true,
-    webhookUrl: ""
+    webhookUrl: "",
+    isPremium: false
   };
   blockedSlots = [];
   existingBookings = [];
@@ -1154,6 +1164,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Re-render services
   renderServices();
   setProgress(1);
+
+  // Premium-only: offer "add this salon to your home screen".
+  setupPremiumInstall();
 });
 
 /* ----------------------------------------------------------------
@@ -1627,6 +1640,140 @@ function resetBooking() {
   goToStep(1);
 }
 
+/* ----------------------------------------------------------------
+   PREMIUM PERK — "Add this salon to your home screen"
+   Only runs for premium salons. Free booking pages get nothing here:
+   no manifest, no service worker, no prompt.
+   ---------------------------------------------------------------- */
+let pwaDeferred = null;
+const PWA_DISMISS_TTL = 14 * 24 * 60 * 60 * 1000; // 14 days
+const PWA_DISMISS_KEY = () => `sa_book_a2hs_${(CONFIG && CONFIG.businessId) || ''}`;
+
+function pwaStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function pwaIsIOS() {
+  return (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function pwaDismissed() {
+  try { const ts = parseInt(localStorage.getItem(PWA_DISMISS_KEY()) || '0', 10); return ts && (Date.now() - ts) < PWA_DISMISS_TTL; }
+  catch { return false; }
+}
+
+// Android/desktop Chromium fire this when the page is installable. Capture it for
+// a true one-tap, but only surface the banner for premium salons.
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  pwaDeferred = e;
+  if (CONFIG && CONFIG.isPremium) pwaShowBanner();
+});
+window.addEventListener('appinstalled', () => {
+  pwaDeferred = null;
+  const b = document.getElementById('pwa-banner'); if (b) b.style.display = 'none';
+});
+
+function setupPremiumInstall() {
+  if (!CONFIG.isPremium || pwaStandalone()) return; // premium-only; hide once installed
+  const name = CONFIG.businessName || 'Bookings';
+  // Brand the install: manifest drives Android one-tap; apple-touch-icon is the
+  // iPhone home-screen icon (iOS ignores the manifest icon).
+  const mlink = document.getElementById('pwa-manifest');
+  if (mlink) mlink.href = `/api/manifest?app=book&biz=${encodeURIComponent(CONFIG.businessId)}&name=${encodeURIComponent(name)}`;
+  const ati = document.getElementById('pwa-apple-icon');
+  if (ati) ati.href = CONFIG.logoUrl || '/icons/sl-192.png';
+  const at = document.getElementById('pwa-apple-title'); if (at) at.content = name;
+  const tc = document.getElementById('pwa-theme'); if (tc) tc.content = CONFIG.accentColor || '#A8456B';
+  const bz = document.getElementById('pwa-biz'); if (bz) bz.textContent = name;
+  // Register the SW so Chrome treats the page as installable. sw.js never caches
+  // Supabase or /api/* calls, so booking availability is always live.
+  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('/sw.js'); } catch (_) {} }
+  if (!pwaDismissed()) pwaShowBanner();
+}
+
+function pwaShowBanner() {
+  if (!CONFIG.isPremium || pwaStandalone() || pwaDismissed()) return;
+  const b = document.getElementById('pwa-banner'); if (!b) return;
+  // iOS can't one-tap (Apple); Android one-taps only once armed → otherwise show steps.
+  const cta = document.getElementById('pwa-cta');
+  if (cta) cta.textContent = (pwaIsIOS() || !pwaDeferred) ? 'How' : 'Add';
+  b.style.display = 'block';
+}
+function pwaDismiss() {
+  try { localStorage.setItem(PWA_DISMISS_KEY(), String(Date.now())); } catch {}
+  const b = document.getElementById('pwa-banner'); if (b) b.style.display = 'none';
+}
+
+async function pwaInstall() {
+  if (pwaDeferred) { pwaDeferred.prompt(); try { await pwaDeferred.userChoice; } catch (_) {} pwaDeferred = null; return; }
+  pwaOpenModal();
+}
+
+const PWA_SHARE_SVG = '<svg class="pwa-ico-inline" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg>';
+function pwaOpenModal() {
+  const steps = document.getElementById('pwa-steps');
+  if (pwaIsIOS()) {
+    steps.innerHTML =
+      `<li><span class="pwa-n">1</span><span>Tap the <strong>Share</strong> icon ${PWA_SHARE_SVG} at the bottom of Safari.</span></li>` +
+      `<li><span class="pwa-n">2</span><span>Scroll down and tap <strong>Add to Home Screen</strong>.</span></li>` +
+      `<li><span class="pwa-n">3</span><span>Tap <strong>Add</strong> — then open it from your home screen. 🎉</span></li>`;
+  } else {
+    steps.innerHTML =
+      `<li><span class="pwa-n">1</span><span>Tap the <strong>⋮ menu</strong> (top-right of your browser).</span></li>` +
+      `<li><span class="pwa-n">2</span><span>Tap <strong>Install app</strong> (or <strong>Add to Home screen</strong>).</span></li>` +
+      `<li><span class="pwa-n">3</span><span>Tap <strong>Install</strong> — done! 🎉</span></li>`;
+  }
+  document.getElementById('pwa-modal').style.display = 'flex';
+}
+function pwaCloseModal() { document.getElementById('pwa-modal').style.display = 'none'; }
+
 </script>
+
+<!-- ===== Premium "add to home screen" UI (hidden until a premium page asks) ===== -->
+<style>
+  .pwa-banner { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 0 14px calc(14px + env(safe-area-inset-bottom)); animation: pwaUp .3s cubic-bezier(0.4,0,0.2,1); }
+  @keyframes pwaUp { from { transform: translateY(120%); } to { transform: translateY(0); } }
+  .pwa-banner-inner { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lift); border-radius: 14px; padding: 12px 12px 12px 14px; }
+  .pwa-emoji { font-size: 22px; flex-shrink: 0; }
+  .pwa-txt { flex: 1; min-width: 0; }
+  .pwa-title { font-size: 14px; font-weight: 600; color: var(--text-1); line-height: 1.25; }
+  .pwa-sub { font-size: 12px; color: var(--text-2); line-height: 1.3; }
+  .pwa-cta { flex-shrink: 0; background: var(--accent); color: #fff; border: none; border-radius: 9px; font-weight: 600; font-size: 13px; padding: 10px 16px; cursor: pointer; font-family: inherit; }
+  .pwa-x { flex-shrink: 0; background: none; border: none; font-size: 20px; line-height: 1; color: var(--text-3); cursor: pointer; padding: 4px; }
+
+  .pwa-overlay { position: fixed; inset: 0; background: rgba(27,24,21,0.5); z-index: 9999; display: flex; align-items: flex-end; justify-content: center; }
+  .pwa-sheet { background: var(--surface); width: 100%; max-width: 440px; border-radius: 20px 20px 0 0; padding: 26px 22px calc(26px + env(safe-area-inset-bottom)); position: relative; box-shadow: 0 -8px 30px rgba(0,0,0,0.18); animation: pwaUp .28s cubic-bezier(0.4,0,0.2,1); }
+  .pwa-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 26px; line-height: 1; color: var(--text-3); cursor: pointer; }
+  .pwa-sheet-title { font-family: var(--serif); font-size: 24px; font-weight: 500; color: var(--text-1); margin-bottom: 6px; }
+  .pwa-sheet-sub { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 18px; }
+  .pwa-steps { list-style: none; padding: 0; margin: 0 0 18px; }
+  .pwa-steps li { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-1); line-height: 1.45; }
+  .pwa-steps li:first-child { border-top: none; }
+  .pwa-n { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .pwa-ico-inline { vertical-align: middle; margin: 0 2px; }
+  .pwa-done { width: 100%; padding: 15px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+</style>
+
+<div id="pwa-banner" class="pwa-banner" style="display:none">
+  <div class="pwa-banner-inner">
+    <span class="pwa-emoji">📲</span>
+    <div class="pwa-txt">
+      <div class="pwa-title">Add <span id="pwa-biz">us</span> to your home screen</div>
+      <div class="pwa-sub">Book again in one tap — no app store needed.</div>
+    </div>
+    <button class="pwa-cta" id="pwa-cta" onclick="pwaInstall()">Add</button>
+    <button class="pwa-x" onclick="pwaDismiss()" aria-label="Dismiss">&times;</button>
+  </div>
+</div>
+
+<div id="pwa-modal" class="pwa-overlay" style="display:none" onclick="pwaCloseModal()">
+  <div class="pwa-sheet" onclick="event.stopPropagation()">
+    <button class="pwa-close" onclick="pwaCloseModal()" aria-label="Close">&times;</button>
+    <div class="pwa-sheet-title">Add to your home screen</div>
+    <div class="pwa-sheet-sub">It opens like an app — book your next appointment in one tap.</div>
+    <ol class="pwa-steps" id="pwa-steps"></ol>
+    <button class="pwa-done" onclick="pwaCloseModal()">Got it</button>
+  </div>
+</div>
 </body>
 </html>
