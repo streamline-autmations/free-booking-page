@@ -14,9 +14,9 @@ build — both paths now call the **same** `create_tenant()` RPC, so they can't 
 
 ## Security
 
-- **Honeypot** `company_url` (off-screen). Filled ⇒ silent no-op.
-- **Cloudflare Turnstile** (free) — token verified server-side. *Skipped gracefully if `TURNSTILE_SECRET_KEY` is unset* so the page works before keys are wired (same pattern as Brevo).
-- **Rate-limit** — best-effort in-memory sliding window (5 / 10 min / IP). Turnstile is the real bot defence.
+- **Honeypot** `company_url` (off-screen). Filled ⇒ silent no-op. *Always on.*
+- **Rate-limit** — best-effort in-memory sliding window (5 / 10 min / IP). *Always on.*
+- **Cloudflare Turnstile** (free) — **OPT-IN, currently OFF.** The widget was removed from the page and the server skips verification unless `TURNSTILE_ENFORCE='true'`. To re-enable: set that env var, add the widget back to `start.html`, and ensure the site key + `TURNSTILE_SECRET_KEY` belong to the **same** Cloudflare widget with the live domain on its hostname list.
 - **Service-role key** stays server-side; `create_tenant` is `service_role`-only (`revoke`d from anon/authenticated).
 
 ## Environment variables (Vercel)

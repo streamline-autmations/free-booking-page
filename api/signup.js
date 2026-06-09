@@ -54,7 +54,11 @@ function isEmail(s) {
 
 async function verifyTurnstile(token, ip) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return { ok: true, skipped: true }; // not wired yet → don't block signups
+  // Captcha is OPT-IN. The always-on protections are the honeypot + rate-limit.
+  // To turn Turnstile back on: set TURNSTILE_ENFORCE='true' in Vercel, add the
+  // widget back to start.html, and make sure the site key + this secret belong
+  // to the SAME Cloudflare widget (with the live domain on its hostname list).
+  if (process.env.TURNSTILE_ENFORCE !== 'true' || !secret) return { ok: true, skipped: true };
   if (!token) return { ok: false, reason: 'captcha missing' };
   try {
     const form = new URLSearchParams({ secret, response: token });
