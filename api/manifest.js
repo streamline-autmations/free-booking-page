@@ -27,6 +27,7 @@ module.exports = async (req, res) => {
   if (isBook) {
     const name = String(qp(req, 'name') || 'Bookings').slice(0, 60) || 'Bookings';
     manifest = {
+      id: `/?biz=${slug}`,            // stable identity → Chrome mints a real WebAPK
       name: name,
       short_name: name.slice(0, 20),
       description: `Book your next appointment with ${name}.`,
@@ -44,6 +45,7 @@ module.exports = async (req, res) => {
     };
   } else {
     manifest = {
+      id: `/admin?biz=${slug}`,       // stable identity → Chrome mints a real WebAPK
       name: 'Streamline Bookings',
       short_name: 'Bookings',
       description: 'Your booking dashboard — every appointment, in one app.',
