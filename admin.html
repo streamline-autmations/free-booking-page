@@ -745,6 +745,20 @@
     .ios-steps { font-size: 13px; line-height: 1.7; margin-top: 12px; }
     .ios-steps strong { font-weight: 600; }
 
+    /* Install instructions sheet — bottom sheet, works from any tab / platform */
+    .im-overlay { position: fixed; inset: 0; background: rgba(27,24,21,0.5); z-index: 9999; display: flex; align-items: flex-end; justify-content: center; }
+    .im-sheet { background: var(--surface); width: 100%; max-width: 440px; border-radius: 20px 20px 0 0; padding: 26px 22px calc(26px + env(safe-area-inset-bottom)); position: relative; box-shadow: 0 -8px 30px rgba(0,0,0,0.18); animation: imUp .28s cubic-bezier(0.4,0,0.2,1); }
+    @keyframes imUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .im-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 26px; line-height: 1; color: var(--text-3); cursor: pointer; }
+    .im-title { font-size: 20px; font-weight: 700; color: var(--text-1); margin-bottom: 6px; }
+    .im-sub { font-size: 13px; color: var(--text-2); line-height: 1.5; margin-bottom: 18px; }
+    .im-steps { list-style: none; padding: 0; margin: 0 0 18px; }
+    .im-steps li { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); font-size: 14px; color: var(--text-1); line-height: 1.45; }
+    .im-steps li:first-child { border-top: none; }
+    .im-steps .n { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .im-steps .ico { vertical-align: middle; margin: 0 2px; }
+    .im-done { width: 100%; padding: 15px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+
     .brand-field { margin-bottom: 14px; }
     .brand-field label {
       display: block; font-size: 12px; font-weight: 600;
@@ -884,6 +898,18 @@
       </div>
       <button id="install-banner-btn" onclick="triggerInstall()" style="flex-shrink:0;background:#fff;color:var(--accent);border:none;border-radius:8px;font-weight:700;font-size:13px;padding:9px 14px;cursor:pointer">Install</button>
       <button onclick="dismissInstallBanner()" aria-label="Dismiss" style="flex-shrink:0;background:transparent;color:#fff;border:none;font-size:20px;line-height:1;cursor:pointer;padding:4px;opacity:0.85">×</button>
+    </div>
+  </div>
+
+  <!-- Install instructions sheet — shown when there's no native one-tap prompt
+       (iPhone always; Android only if the browser hasn't armed the prompt yet). -->
+  <div id="install-modal" class="im-overlay" style="display:none" onclick="closeInstallModal()">
+    <div class="im-sheet" onclick="event.stopPropagation()">
+      <button class="im-close" onclick="closeInstallModal()" aria-label="Close">&times;</button>
+      <div class="im-title" id="im-title">Add to your home screen</div>
+      <div class="im-sub">It opens like a real app and every booking lands on your phone — no app store needed.</div>
+      <ol class="im-steps" id="im-steps"></ol>
+      <button class="im-done" onclick="closeInstallModal()">Got it</button>
     </div>
   </div>
 
@@ -2346,8 +2372,11 @@ function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  // iPhone/iPod, plus iPadOS 13+ which masquerades as a Mac but is touch-capable.
+  return (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
+function isAndroid() { return /Android/i.test(navigator.userAgent); }
 function installBannerDismissed() {
   try {
     const ts = parseInt(localStorage.getItem(INSTALL_DISMISS_KEY) || '0', 10);
@@ -2384,23 +2413,46 @@ window.addEventListener('appinstalled', () => {
   if (el) el.style.display = 'none';
 });
 
-function triggerInstall() {
+async function triggerInstall() {
+  // Android / desktop Chromium: fire the real one-tap OS install prompt.
   if (deferredInstallPrompt) {
     deferredInstallPrompt.prompt();
+    try { await deferredInstallPrompt.userChoice; } catch (_) {}
     deferredInstallPrompt = null;
     return;
   }
-  // iOS Safari / Firefox / older Chrome: no native prompt. Show the manual steps.
-  document.getElementById('ios-steps').style.display = 'block';
-  // Scroll the More-tab install card into view if it's around.
-  const c = document.getElementById('install-card');
-  if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // iPhone (Apple blocks programmatic install), or Android before the prompt has
+  // armed → show clear, platform-specific steps in a sheet that works on any tab.
+  openInstallModal();
 }
 
-// Try to show the iOS install banner once the dashboard is up. Android browsers
-// that ARE installable will overwrite this when beforeinstallprompt fires.
+// Bottom-sheet with step-by-step add-to-home-screen instructions.
+const SHARE_SVG = '<svg class="ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg>';
+function openInstallModal() {
+  const steps = document.getElementById('im-steps');
+  if (isIOS()) {
+    steps.innerHTML =
+      `<li><span class="n">1</span><span>Tap the <strong>Share</strong> icon ${SHARE_SVG} at the bottom of Safari.</span></li>` +
+      `<li><span class="n">2</span><span>Scroll down and tap <strong>Add to Home Screen</strong>.</span></li>` +
+      `<li><span class="n">3</span><span>Tap <strong>Add</strong> — then open it from your home screen. 🎉</span></li>`;
+  } else {
+    steps.innerHTML =
+      `<li><span class="n">1</span><span>Tap the <strong>⋮ menu</strong> (top-right of your browser).</span></li>` +
+      `<li><span class="n">2</span><span>Tap <strong>Install app</strong> (or <strong>Add to Home screen</strong>).</span></li>` +
+      `<li><span class="n">3</span><span>Tap <strong>Install</strong> — done! 🎉</span></li>`;
+  }
+  document.getElementById('install-modal').style.display = 'flex';
+}
+function closeInstallModal() {
+  document.getElementById('install-modal').style.display = 'none';
+}
+
+// Show the install banner on mobile once the dashboard is up. Android that fires
+// beforeinstallprompt gets the true one-tap; otherwise the button opens the steps.
 function maybeShowIosInstall() {
-  if (isIOS() && !isStandalone()) showInstallBanner('ios');
+  if (isStandalone()) return;
+  if (isIOS()) showInstallBanner('ios');
+  else if (isAndroid()) showInstallBanner('android');
 }
 
 function roundRect(ctx, x, y, w, h, r) {
