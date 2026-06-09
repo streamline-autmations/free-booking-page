@@ -1712,6 +1712,15 @@ async function pwaInstall() {
 const PWA_SHARE_SVG = '<svg class="pwa-ico-inline" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg>';
 function pwaOpenModal() {
   const steps = document.getElementById('pwa-steps');
+  const note = document.getElementById('pwa-note');
+  if (note) {
+    if (!pwaIsIOS()) {
+      note.innerHTML = `<strong>📛 See "Unsafe app blocked"?</strong> That's normal — tap <strong>More details</strong> → <strong>Install anyway</strong>. It's safe: just a secure shortcut to this salon's page, not a downloaded program.`;
+      note.style.display = 'block';
+    } else {
+      note.style.display = 'none';
+    }
+  }
   if (pwaIsIOS()) {
     steps.innerHTML =
       `<li><span class="pwa-n">1</span><span>Tap the <strong>Share</strong> icon ${PWA_SHARE_SVG} at the bottom of Safari.</span></li>` +
@@ -1751,6 +1760,8 @@ function pwaCloseModal() { document.getElementById('pwa-modal').style.display = 
   .pwa-steps li:first-child { border-top: none; }
   .pwa-n { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .pwa-ico-inline { vertical-align: middle; margin: 0 2px; }
+  .pwa-note { font-size: 12.5px; line-height: 1.5; color: var(--text-2); background: var(--neutral); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; margin: 0 0 16px; }
+  .pwa-note strong { color: var(--text-1); font-weight: 600; }
   .pwa-done { width: 100%; padding: 15px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
 </style>
 
@@ -1772,6 +1783,7 @@ function pwaCloseModal() { document.getElementById('pwa-modal').style.display = 
     <div class="pwa-sheet-title">Add to your home screen</div>
     <div class="pwa-sheet-sub">It opens like an app — book your next appointment in one tap.</div>
     <ol class="pwa-steps" id="pwa-steps"></ol>
+    <p class="pwa-note" id="pwa-note" style="display:none"></p>
     <button class="pwa-done" onclick="pwaCloseModal()">Got it</button>
   </div>
 </div>
