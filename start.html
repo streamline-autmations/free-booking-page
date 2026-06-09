@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Create your free booking page · Streamline</title>
   <meta name="description" content="Get your own free salon booking page and admin dashboard in under a minute." />
-  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="icon" href="/icons/sl-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -191,8 +191,15 @@
       </div>
 
       <div class="turnstile-wrap">
-        <div class="cf-turnstile" id="turnstile" data-sitekey="0x4AAAAAADhLTme-MzBGF5ZBok" data-theme="light"></div>
+        <div class="cf-turnstile" id="turnstile"
+             data-sitekey="0x4AAAAAADhLTme-MzBGF5ZBok"
+             data-theme="light"
+             data-callback="tsOk"
+             data-error-callback="tsErr"
+             data-expired-callback="tsExpired"
+             data-retry="auto"></div>
       </div>
+      <p class="hint" id="ts-msg" style="text-align:center;display:none;">Security check couldn't load — if your browser blocks trackers, allow this site or try another browser.</p>
 
       <button type="submit" class="submit-btn" id="submit-btn">Create my booking page</button>
     </form>
@@ -240,6 +247,13 @@
     const submitBtn = document.getElementById('submit-btn');
     let accentColour = '#A8456B';
     let logoDataUrl = null;
+
+    // Turnstile — capture the token via callbacks (reliable even in "managed"
+    // mode where the widget shows nothing). Globals so Turnstile can call them.
+    let turnstileToken = '';
+    window.tsOk = (t) => { turnstileToken = t; document.getElementById('ts-msg').style.display = 'none'; };
+    window.tsExpired = () => { turnstileToken = ''; if (window.turnstile) { try { turnstile.reset(); } catch (_) {} } };
+    window.tsErr = () => { turnstileToken = ''; document.getElementById('ts-msg').style.display = 'block'; };
 
     // accent swatches
     document.getElementById('swatches').addEventListener('click', (e) => {
@@ -289,7 +303,7 @@
         logoDataUrl,
         consent: document.getElementById('consent').checked,
         company_url: document.getElementById('company_url').value, // honeypot
-        turnstileToken: (document.querySelector('[name="cf-turnstile-response"]') || {}).value || '',
+        turnstileToken: turnstileToken || (document.querySelector('[name="cf-turnstile-response"]') || {}).value || '',
       };
 
       // light client-side guards (server re-validates)
@@ -297,6 +311,11 @@
         showErr('Please fill in all the required fields.'); return;
       }
       if (!payload.consent) { showErr('Please tick the consent box so we can set up your page.'); return; }
+      if (!payload.turnstileToken) {
+        showErr("Hang on — the security check hasn't finished. Give it a second and tap again. If it never loads, your browser may be blocking it (try turning off Tracking Prevention for this site, or use another browser).");
+        if (window.turnstile) { try { turnstile.reset(); } catch (_) {} }
+        return;
+      }
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spin"></span>Creating your page…';
@@ -311,6 +330,7 @@
           showErr(data.error || 'Something went wrong. Please try again.');
           submitBtn.disabled = false;
           submitBtn.textContent = 'Create my booking page';
+          turnstileToken = '';
           if (window.turnstile) { try { turnstile.reset(); } catch (_) {} }
           return;
         }
