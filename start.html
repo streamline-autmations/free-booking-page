@@ -169,12 +169,14 @@
       <div class="form-group">
         <label class="form-label">Brand colour <span class="opt">— optional</span></label>
         <div class="swatches" id="swatches">
-          <span class="swatch sel" data-c="#A8456B" style="background:#A8456B"></span>
-          <span class="swatch" data-c="#3FA7D6" style="background:#3FA7D6"></span>
-          <span class="swatch" data-c="#6C63B5" style="background:#6C63B5"></span>
-          <span class="swatch" data-c="#2E9E78" style="background:#2E9E78"></span>
-          <span class="swatch" data-c="#C9844B" style="background:#C9844B"></span>
-          <span class="swatch" data-c="#1B1815" style="background:#1B1815"></span>
+          <span class="swatch sel" data-c="#B25C7C" style="background:#B25C7C"></span>
+          <span class="swatch" data-c="#C76B52" style="background:#C76B52"></span>
+          <span class="swatch" data-c="#C39A4E" style="background:#C39A4E"></span>
+          <span class="swatch" data-c="#6E8C6F" style="background:#6E8C6F"></span>
+          <span class="swatch" data-c="#3E8E8E" style="background:#3E8E8E"></span>
+          <span class="swatch" data-c="#5B6CB0" style="background:#5B6CB0"></span>
+          <span class="swatch" data-c="#7C5A93" style="background:#7C5A93"></span>
+          <span class="swatch" data-c="#33415C" style="background:#33415C"></span>
         </div>
       </div>
 
@@ -232,16 +234,35 @@
     const form = document.getElementById('signup-form');
     const errBanner = document.getElementById('err-banner');
     const submitBtn = document.getElementById('submit-btn');
-    let accentColour = '#A8456B';
+    let accentColour = '#B25C7C';
     let logoDataUrl = null;
 
-    // accent swatches
+    // Recolour the whole page live from a hex — accent + its derived tints/dark.
+    function hexToRgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+    function darkenHex(hex, f) {
+      const [r, g, b] = hexToRgb(hex);
+      const d = (c) => Math.round(c * f).toString(16).padStart(2, '0');
+      return '#' + d(r) + d(g) + d(b);
+    }
+    function applyAccent(hex) {
+      const [r, g, b] = hexToRgb(hex);
+      const s = document.documentElement.style;
+      s.setProperty('--accent', hex);
+      s.setProperty('--accent-dark', darkenHex(hex, 0.78));
+      s.setProperty('--accent-tint', `rgba(${r},${g},${b},0.07)`);
+      s.setProperty('--accent-soft', `rgba(${r},${g},${b},0.14)`);
+      s.setProperty('--accent-focus', `rgba(${r},${g},${b},0.22)`);
+    }
+    applyAccent(accentColour); // start on the first swatch's colour
+
+    // accent swatches — update the live page colour, not just the saved value
     document.getElementById('swatches').addEventListener('click', (e) => {
       const sw = e.target.closest('.swatch');
       if (!sw) return;
       document.querySelectorAll('.swatch').forEach(s => s.classList.remove('sel'));
       sw.classList.add('sel');
       accentColour = sw.dataset.c;
+      applyAccent(accentColour);
     });
 
     // logo → dataURL preview
