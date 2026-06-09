@@ -142,6 +142,8 @@
     .num-btn:active { transform: scale(0.93); background: var(--accent-tint); }
     .num-btn.del    { font-size: 18px; color: var(--text-2); }
     .num-btn.blank  { visibility: hidden; cursor: default; }
+    .pin-tip { margin-top: 16px; font-size: 12px; color: var(--text-3); background: none; border: none; cursor: pointer; font-family: inherit; }
+    .pin-tip:hover { color: var(--text-2); text-decoration: underline; }
 
     /* ================================================================
        DASHBOARD LAYOUT
@@ -861,6 +863,7 @@
       <button class="num-btn" onclick="appendPin('0')">0</button>
       <button class="num-btn del"   onclick="deletePin()">⌫</button>
     </div>
+    <button type="button" class="pin-tip" id="pin-tip" onclick="pastePin()">Type, or tap here to paste your PIN ⌨️</button>
   </div>
 </div>
 
@@ -1307,6 +1310,39 @@ function deletePin() { pin = pin.slice(0,-1); refreshDots(); }
 function refreshDots() {
   for (let i = 0; i < 4; i++)
     document.getElementById(`dot-${i}`).classList.toggle('filled', i < pin.length);
+}
+
+// Set the whole PIN at once (used by paste) — keep only digits, max 4, auto-submit.
+function setPin(str) {
+  pin = String(str).replace(/\D/g, '').slice(0, 4);
+  refreshDots();
+  if (pin.length === 4) setTimeout(checkPin, 90);
+}
+
+// Let people type the PIN on a real keyboard or paste it — not just tap the pad.
+function pinScreenVisible() {
+  const el = document.getElementById('pin-screen');
+  return el && el.style.display !== 'none';
+}
+document.addEventListener('keydown', (e) => {
+  if (!pinScreenVisible()) return;
+  if (e.key >= '0' && e.key <= '9') { e.preventDefault(); appendPin(e.key); }
+  else if (e.key === 'Backspace')  { e.preventDefault(); deletePin(); }
+  else if (e.key === 'Enter' && pin.length === 4) { e.preventDefault(); checkPin(); }
+});
+document.addEventListener('paste', (e) => {
+  if (!pinScreenVisible()) return;
+  const text = ((e.clipboardData || window.clipboardData) || {}).getData
+    ? (e.clipboardData || window.clipboardData).getData('text') : '';
+  if (/\d/.test(text)) { e.preventDefault(); setPin(text); }
+});
+// Mobile: no physical keyboard + no input to paste into, so offer an explicit
+// tap-to-paste that reads the clipboard (https + user gesture).
+async function pastePin() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (/\d/.test(text)) setPin(text);
+  } catch (_) { /* clipboard blocked — typing and the on-screen pad still work */ }
 }
 
 async function checkPin() {
