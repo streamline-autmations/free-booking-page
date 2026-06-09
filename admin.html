@@ -15,8 +15,25 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="apple-touch-icon" id="apple-icon" href="" />
+  <link rel="apple-touch-icon" id="apple-icon" href="/icons/sl-192.png" />
   <link rel="manifest" id="manifest-link" href="" />
+  <script>
+    // Set the manifest href SYNCHRONOUSLY at first paint (from the ?biz= slug) and
+    // register the service worker immediately. Chrome decides "is this installable?"
+    // during initial load — if the manifest href is still empty then, the address-bar
+    // install icon never appears and you only get "Add to Home screen". Doing it here
+    // (before the async Supabase load) is what makes the real install offer show up.
+    (function () {
+      try {
+        var biz = new URLSearchParams(location.search).get('biz') || '';
+        var l = document.getElementById('manifest-link');
+        if (l) l.href = '/api/manifest?biz=' + encodeURIComponent(biz);
+      } catch (e) {}
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      }
+    })();
+  </script>
 
   <style>
     /* ================================================================
