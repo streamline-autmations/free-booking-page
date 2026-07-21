@@ -162,6 +162,76 @@
     .pin-tip { margin-top: 16px; font-size: 12px; color: var(--text-3); background: none; border: none; cursor: pointer; font-family: inherit; }
     .pin-tip:hover { color: var(--text-2); text-decoration: underline; }
 
+    /* Forgot-PIN recovery — inline disclosure under the pad rather than a
+       modal, so it stays out of the way until someone actually needs it. */
+    .pin-forgot {
+      display: block;
+      margin: 10px auto 0;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--text-3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .pin-forgot:hover { color: var(--accent); }
+
+    .recover-panel {
+      margin-top: 18px;
+      padding: 18px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-align: left;
+    }
+    .recover-panel p {
+      margin: 0 0 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-2);
+      text-wrap: pretty;
+    }
+    .recover-panel input {
+      width: 100%;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-1);
+      padding: 11px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm, 10px);
+      background: var(--bg);
+      margin-bottom: 10px;
+    }
+    .recover-panel input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .recover-btn {
+      width: 100%;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm, 10px);
+      padding: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .recover-btn:hover:not(:disabled) { opacity: 0.9; }
+    .recover-btn:active:not(:disabled) { transform: translateY(1px); }
+    .recover-btn:disabled { opacity: 0.55; cursor: default; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .recover-msg { margin-top: 10px; font-size: 12px; line-height: 1.6; }
+    .recover-msg.ok  { color: var(--text-2); }
+    .recover-msg.bad { color: #ef4444; }
+
     /* ================================================================
        DASHBOARD LAYOUT
        ================================================================ */
@@ -897,6 +967,17 @@
       <button class="num-btn del"   onclick="deletePin()">⌫</button>
     </div>
     <button type="button" class="pin-tip" id="pin-tip" onclick="pastePin()">Type, or tap here to paste your PIN ⌨️</button>
+    <button type="button" class="pin-forgot" id="pin-forgot" onclick="toggleRecover()">Forgot your PIN?</button>
+
+    <div class="recover-panel" id="recover-panel" hidden>
+      <p>Enter the email address you signed up with and we'll send you a new PIN. Your old one stops working.</p>
+      <label for="recover-email" class="sr-only">Email address</label>
+      <input type="email" id="recover-email" placeholder="you@example.com"
+             autocomplete="email" inputmode="email"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();requestNewPin();}" />
+      <button type="button" class="recover-btn" id="recover-btn" onclick="requestNewPin()">Send me a new PIN</button>
+      <div class="recover-msg" id="recover-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -1383,14 +1464,21 @@ function pinScreenVisible() {
   const el = document.getElementById('pin-screen');
   return el && el.style.display !== 'none';
 }
+// The recovery panel puts a real text field on this screen, so these global
+// handlers must stand down while it's focused — otherwise typing an email with
+// a digit in it feeds the PIN pad and Backspace can't delete.
+function typingInField(e) {
+  const t = e.target;
+  return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+}
 document.addEventListener('keydown', (e) => {
-  if (!pinScreenVisible()) return;
+  if (!pinScreenVisible() || typingInField(e)) return;
   if (e.key >= '0' && e.key <= '9') { e.preventDefault(); appendPin(e.key); }
   else if (e.key === 'Backspace')  { e.preventDefault(); deletePin(); }
   else if (e.key === 'Enter' && pin.length === 4) { e.preventDefault(); checkPin(); }
 });
 document.addEventListener('paste', (e) => {
-  if (!pinScreenVisible()) return;
+  if (!pinScreenVisible() || typingInField(e)) return;
   const text = ((e.clipboardData || window.clipboardData) || {}).getData
     ? (e.clipboardData || window.clipboardData).getData('text') : '';
   if (/\d/.test(text)) { e.preventDefault(); setPin(text); }
@@ -1421,6 +1509,56 @@ async function checkPin() {
       refreshDots();
     }, 1600);
   }
+}
+
+/* ----------------------------------------------------------------
+   FORGOT PIN — self-serve recovery
+   The PIN is stored only as a hash, so it can't be re-sent; the server
+   issues a new one and mails it to the address already on the business.
+   The response is deliberately the same whether or not the email matched,
+   so this screen can't be used to test who owns which page.
+   ---------------------------------------------------------------- */
+function toggleRecover() {
+  const panel = document.getElementById('recover-panel');
+  const open = !panel.hidden;
+  panel.hidden = open;
+  document.getElementById('pin-forgot').textContent = open ? 'Forgot your PIN?' : 'Never mind, I remember it';
+  if (!open) document.getElementById('recover-email').focus();
+}
+
+async function requestNewPin() {
+  const emailEl = document.getElementById('recover-email');
+  const btn = document.getElementById('recover-btn');
+  const msg = document.getElementById('recover-msg');
+  const email = (emailEl.value || '').trim();
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msg.className = 'recover-msg bad';
+    msg.textContent = 'Please enter a valid email address.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  msg.textContent = '';
+
+  const { data, error } = await callFn('admin-recover', {
+    businessId: CONFIG.businessId,
+    email,
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Send me a new PIN';
+
+  if (error) {
+    msg.className = 'recover-msg bad';
+    msg.textContent = error;
+    return;
+  }
+  msg.className = 'recover-msg ok';
+  msg.textContent = (data && data.message)
+    || 'If that business and email match our records, a new PIN is on its way.';
+  emailEl.value = '';
 }
 
 function openDashboard() {
@@ -2037,6 +2175,14 @@ async function renderBookings() {
   const todayBookings = bookings.filter(b => b.booking_date === today && live(b));
   const todayCount = todayBookings.length;
   const weekCount  = bookings.filter(b => b.booking_date >= today && b.booking_date <= weekEnd && live(b)).length;
+  // Everything else in this panel looks forward (today, next 7 days, all
+  // time) — nothing shows recent momentum. "Last 30 days" is the one
+  // backward-looking signal missing: a quiet week vs a busy one, without
+  // waiting for "all time" to average it away.
+  const last30Start = new Date(today + 'T00:00:00');
+  last30Start.setDate(last30Start.getDate() - 29);
+  const last30ISO = last30Start.toISOString().slice(0, 10);
+  const last30Count = bookings.filter(b => b.booking_date >= last30ISO && b.booking_date <= today && live(b)).length;
   const todayRev = todayBookings.reduce((sum, b) => {
     const n = Number(String(b.price || '').replace(/[^\d.]/g, '')) || 0;
     return sum + n;
@@ -2065,7 +2211,7 @@ async function renderBookings() {
     </div>`;
 
   const glance = `
-    <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
       <div style="background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;border-radius:var(--radius);padding:14px 16px">
         <div style="font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.6px;font-weight:600">Today</div>
         <div style="font-size:28px;font-weight:700;line-height:1.1;margin-top:4px">${todayCount}</div>
@@ -2073,11 +2219,15 @@ async function renderBookings() {
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
         <div style="font-size:22px;font-weight:700;color:var(--text-1)">${weekCount}</div>
-        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px">Next 7 days</div>
+        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px;white-space:nowrap">7 days</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--text-1)">${last30Count}</div>
+        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px;white-space:nowrap">30 days</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
         <div style="font-size:22px;font-weight:700;color:var(--text-1)">${bookings.length}</div>
-        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px">All time</div>
+        <div style="font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.4px;font-weight:600;margin-top:2px;white-space:nowrap">All time</div>
       </div>
     </div>`;
 
@@ -2186,15 +2336,21 @@ const LOCKED_FEATURES = [
 ];
 const STREAMLINE_WA = '27837797935';
 
-// Six tasteful preset accents available to every salon for free. Premium users
-// can override via the locked "Custom brand colour" tile (opens upsell modal).
+// Preset accents available to every business for free. Premium users can
+// override via the locked "Custom brand colour" tile (opens upsell modal).
+// MIRRORS api/_brand.js PALETTE — the signup wizard offers the same eight, so
+// a colour picked at signup is always still valid here. Legacy colours that
+// existing tenants sit on stay accepted server-side (see _brand.js) even
+// though they're no longer offered as swatches.
 const BRAND_PRESETS = [
-  { name: 'Mauve',     value: '#A8456B' },
-  { name: 'Purple',    value: '#7B3FE4' },
-  { name: 'Teal',      value: '#0D9488' },
-  { name: 'Coral',     value: '#F87171' },
-  { name: 'Olive',     value: '#84CC16' },
-  { name: 'Slate',     value: '#475569' },
+  { name: 'Rose',   value: '#B25C7C' },
+  { name: 'Clay',   value: '#C76B52' },
+  { name: 'Ochre',  value: '#C39A4E' },
+  { name: 'Sage',   value: '#6E8C6F' },
+  { name: 'Teal',   value: '#3E8E8E' },
+  { name: 'Indigo', value: '#5B6CB0' },
+  { name: 'Plum',   value: '#7C5A93' },
+  { name: 'Navy',   value: '#33415C' },
 ];
 
 function pickBrandColour(hex) {
@@ -2218,7 +2374,14 @@ function renderBrandSwatches() {
     <button type="button" onclick="openUpsellByTitle('Custom brand colour')"
       title="Custom colour (premium)"
       style="width:36px;height:36px;border-radius:50%;border:1px dashed var(--border);background:repeating-conic-gradient(#eee 0% 25%,#f8f8f8 0% 50%) 50%/9px 9px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-size:14px">🔒</button>`;
-  wrap.innerHTML = BRAND_PRESETS.map(sw).join('') + customLocked;
+
+  // Tenants created before this palette sit on colours that are still valid but
+  // no longer offered. Show theirs first so the row never renders with nothing
+  // selected, which reads as "your colour is gone".
+  const onPalette = BRAND_PRESETS.some((p) => p.value.toLowerCase() === current);
+  const currentSwatch = onPalette ? '' : sw({ name: 'Your current colour', value: current });
+
+  wrap.innerHTML = currentSwatch + BRAND_PRESETS.map(sw).join('') + customLocked;
 }
 
 function renderMore() {

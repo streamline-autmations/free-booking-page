@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Create your free booking page · Streamline</title>
-  <meta name="description" content="Get your own free salon booking page and admin dashboard in under a minute." />
+  <meta name="description" content="Get your own free booking page and admin dashboard in under two minutes." />
   <link rel="icon" href="/icons/sl-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,10 +26,20 @@
 
     header.hero{text-align:center;padding:48px 0 8px;}
     .eyebrow{font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;}
-    h1{font-family:var(--serif);font-size:40px;font-weight:500;letter-spacing:-0.01em;line-height:1.08;color:var(--text-1);}
+    h1{font-family:var(--serif);font-size:38px;font-weight:500;letter-spacing:-0.01em;line-height:1.1;color:var(--text-1);}
     .sub{color:var(--text-2);font-size:15px;margin:12px auto 0;max-width:420px;}
 
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 24px;margin:28px 0 16px;}
+    /* progress */
+    .progress-wrap{margin:26px 0 0;}
+    .progress-label{font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;text-align:center;}
+    .progress-track{height:4px;background:var(--neutral);border-radius:2px;overflow:hidden;}
+    .progress-fill{height:100%;width:16.66%;background:var(--accent);border-radius:2px;transition:width .35s var(--ease);}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:28px 24px;margin:20px 0 16px;}
+    .step{display:none;}
+    .step.active{display:block;}
+    .step-title{font-family:var(--serif);font-size:24px;font-weight:600;margin-bottom:4px;}
+    .step-help{color:var(--text-2);font-size:13px;margin-bottom:20px;}
 
     .form-group{margin-bottom:16px;}
     .row{display:flex;gap:12px;}
@@ -41,10 +51,19 @@
       font-family:inherit;font-size:16px;color:var(--text-1);background:var(--surface);
       transition:border-color .2s var(--ease),box-shadow .2s var(--ease);outline:none;min-height:52px;-webkit-appearance:none;
     }
-    select.form-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23A39A8E' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 18px center;padding-right:40px;}
     .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-focus);}
     .form-input.err{border-color:#ef4444;}
     .hint{font-size:12px;color:var(--text-3);margin-top:5px;}
+
+    /* step 1: category grid */
+    .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .cat-tile{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px 14px;cursor:pointer;background:var(--surface);transition:border-color .15s var(--ease),background .15s var(--ease),transform .1s var(--ease);}
+    .cat-tile:hover{border-color:var(--border-strong);}
+    .cat-tile:active{transform:scale(0.98);}
+    .cat-tile.sel{border-color:var(--accent);background:var(--accent-tint);}
+    .cat-tile .cat-label{font-weight:600;font-size:13.5px;color:var(--text-1);}
+    .cat-tile .cat-example{font-size:11.5px;color:var(--text-3);margin-top:3px;line-height:1.4;}
+    .other-input{display:none;margin-top:14px;}
 
     /* accent swatches */
     .swatches{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
@@ -52,13 +71,56 @@
     .swatch:hover{transform:scale(1.08);}
     .swatch.sel{border-color:var(--text-1);box-shadow:0 0 0 2px var(--surface) inset;}
 
+    /* goal chips */
+    .goal-chips{display:flex;flex-wrap:wrap;gap:9px;}
+    .chip{padding:11px 16px;border:1.5px solid var(--border-strong);border-radius:999px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;background:var(--surface);transition:all .15s var(--ease);}
+    .chip:hover{border-color:var(--accent);}
+    .chip.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+    /* services editor */
+    .svc-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+    .svc-row input[data-f="name"]{flex:1;min-width:0;}
+    .svc-row input[data-f="duration"]{width:64px;text-align:center;padding-left:6px;padding-right:6px;}
+    .svc-row input[data-f="price"]{width:82px;text-align:center;padding-left:6px;padding-right:6px;}
+    .svc-row .svc-rm{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-3);font-size:16px;cursor:pointer;line-height:1;}
+    .svc-row .svc-rm:hover{border-color:#ef4444;color:#ef4444;}
+    .svc-hint{font-size:11px;color:var(--text-3);margin:-4px 0 14px;}
+    .add-svc-btn{width:100%;padding:13px;background:var(--neutral);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;margin-top:2px;transition:background .2s,border-color .2s,color .2s;}
+    .add-svc-btn:hover:not(:disabled){background:var(--surface);border-color:var(--accent);color:var(--accent);}
+    .add-svc-btn:disabled{cursor:default;border-style:solid;border-color:var(--border);color:var(--text-3);background:transparent;font-weight:500;}
+
     /* logo upload */
     .logo-up{display:flex;align-items:center;gap:14px;}
     .logo-prev{width:56px;height:56px;border-radius:12px;background:var(--neutral);border:1px solid var(--border);object-fit:contain;display:none;}
     .logo-btn{padding:10px 14px;border:1px solid var(--border-strong);background:var(--surface);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;}
 
+    /* live preview of the booking page they're about to create */
+    .preview-wrap{margin-top:24px;}
+    .preview-cap{font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:9px;}
+    .preview{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow);}
+    .pv-head{padding:20px 18px 16px;text-align:center;background:var(--accent-tint);border-bottom:1px solid var(--border);transition:background .25s var(--ease);}
+    .pv-logo{width:38px;height:38px;border-radius:9px;object-fit:contain;display:none;margin:0 auto 8px;background:var(--surface);}
+    .pv-name{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--text-1);line-height:1.25;}
+    .pv-sub{font-size:11px;color:var(--text-3);margin-top:2px;}
+    .pv-body{padding:14px 18px 18px;}
+    .pv-lbl{font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;}
+    .pv-svc{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+    .pv-svc:last-of-type{border-bottom:none;}
+    .pv-svc .n{font-size:12.5px;color:var(--text-1);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .pv-svc .d{font-size:10.5px;color:var(--text-3);font-weight:400;margin-left:5px;}
+    .pv-svc .p{font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums;flex-shrink:0;}
+    .pv-btn{margin-top:12px;text-align:center;background:var(--accent);color:#fff;font-size:12.5px;font-weight:600;padding:10px;border-radius:9px;transition:background .25s var(--ease);}
+    .pv-empty{font-size:12px;color:var(--text-3);padding:6px 0;}
+
+    /* review */
+    .review-block{border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:12px;position:relative;}
+    .review-block .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin-bottom:6px;}
+    .review-block .edit-link{position:absolute;top:14px;right:14px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;background:none;border:none;font-family:inherit;}
+    .review-block .val{font-size:14px;color:var(--text-1);line-height:1.7;}
+    .review-swatch{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:6px;}
+
     /* consent */
-    .consent{display:flex;gap:11px;align-items:flex-start;margin:6px 0 4px;}
+    .consent{display:flex;gap:11px;align-items:flex-start;margin:14px 0 4px;}
     .consent input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0;}
     .consent label{font-size:13px;color:var(--text-2);line-height:1.5;}
     .consent a{color:var(--accent);}
@@ -66,12 +128,15 @@
     /* honeypot — visually hidden, off-screen, not display:none (bots skip those) */
     .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
 
-    .turnstile-wrap{margin:18px 0 6px;display:flex;justify-content:center;min-height:0;}
-
-    .submit-btn{width:100%;padding:18px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:background .2s var(--ease),transform .1s var(--ease);}
-    .submit-btn:hover{background:var(--accent-dark);}
-    .submit-btn:active{transform:scale(0.99);}
-    .submit-btn:disabled{opacity:0.6;cursor:not-allowed;}
+    /* nav buttons */
+    .wiz-nav{display:flex;gap:10px;margin-top:22px;}
+    .btn{padding:16px;border-radius:var(--radius-sm);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s var(--ease),transform .1s var(--ease),border-color .2s var(--ease);border:none;}
+    .btn:active{transform:scale(0.99);}
+    .btn-primary{flex:2;background:var(--accent);color:#fff;}
+    .btn-primary:hover{background:var(--accent-dark);}
+    .btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+    .btn-ghost{flex:1;background:var(--surface);border:1px solid var(--border-strong);color:var(--text-1);}
+    .btn-ghost:hover{background:var(--neutral);}
 
     .err-banner{display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;padding:12px 14px;border-radius:var(--radius-sm);margin-bottom:14px;}
     .err-banner.show{display:block;}
@@ -91,6 +156,11 @@
     .pin-block{text-align:center;background:var(--surface);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:16px;margin:12px 0;}
     .pin-block .pin{font-size:34px;font-weight:700;letter-spacing:0.2em;color:var(--text-1);}
     .copy-btn{background:none;border:1px solid var(--border-strong);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;margin-top:8px;}
+    /* Answers the goal they picked in step 3 with one concrete next action,
+       instead of the step being a question we never came back to. */
+    .goal-tip{border-left:3px solid var(--accent);background:var(--neutral);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:14px 16px;margin:18px 0 4px;}
+    .goal-tip .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent);font-weight:600;margin-bottom:5px;}
+    .goal-tip p{margin:0;font-size:13.5px;line-height:1.65;color:var(--text-2);text-wrap:pretty;}
     .a2hs{font-size:13px;color:var(--text-2);line-height:1.7;margin-top:6px;}
     .share-btn{width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
     .ghost-btn{display:block;text-align:center;width:100%;padding:15px;background:var(--surface);border:1px solid var(--border-strong);color:var(--text-1);border-radius:var(--radius-sm);font-size:15px;font-weight:600;text-decoration:none;margin-top:10px;}
@@ -102,98 +172,147 @@
   <div class="container">
     <header class="hero">
       <div class="eyebrow">Streamline · Free booking page</div>
-      <h1>Your salon, bookable<br>in under a minute</h1>
-      <p class="sub">Fill this in and you'll instantly get your own booking page and a private admin dashboard. No card, no catch.</p>
+      <h1>Let's build your<br>booking page</h1>
+      <p class="sub">A few quick steps and you'll have your own booking page and admin dashboard — no card, no catch.</p>
     </header>
 
-    <!-- ============ FORM ============ -->
-    <form id="signup-form" class="card" novalidate>
-      <div class="err-banner" id="err-banner"></div>
+    <div class="progress-wrap">
+      <div class="progress-label" id="step-label">Step 1 of 6</div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
 
-      <div class="form-group">
-        <label class="form-label" for="businessName">Salon name</label>
-        <input class="form-input" id="businessName" name="businessName" autocomplete="organization" placeholder="e.g. Glow Bar" required />
+    <!-- ============ WIZARD ============ -->
+    <form id="signup-form" novalidate>
+      <div class="card">
+        <div class="err-banner" id="err-banner"></div>
+
+        <!-- STEP 1: business type -->
+        <section class="step active" data-step="1">
+          <h2 class="step-title">What kind of business are you?</h2>
+          <p class="step-help">Pick the closest match — you'll fine-tune everything next.</p>
+          <div class="cat-grid" id="cat-grid"></div>
+          <div class="other-input" id="other-input-wrap">
+            <label class="form-label" for="customNiche">What do you do?</label>
+            <input class="form-input" id="customNiche" placeholder="e.g. Mobile car wash" maxlength="60" />
+          </div>
+        </section>
+
+        <!-- STEP 2: about you -->
+        <section class="step" data-step="2">
+          <h2 class="step-title">Tell us about your business</h2>
+          <p class="step-help">This is what your customers will see.</p>
+          <div class="form-group">
+            <label class="form-label" for="businessName">Business name</label>
+            <input class="form-input" id="businessName" autocomplete="organization" placeholder="e.g. Glow Bar" />
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label class="form-label" for="ownerName">Your name</label>
+              <input class="form-input" id="ownerName" autocomplete="name" placeholder="e.g. Thandi" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="suburb">Suburb / area</label>
+              <input class="form-input" id="suburb" placeholder="e.g. Sandton" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="whatsapp">WhatsApp number</label>
+            <input class="form-input" id="whatsapp" inputmode="tel" autocomplete="tel" placeholder="e.g. 071 234 5678" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="email">Email <span class="opt">(we'll send your links + PIN here)</span></label>
+            <input class="form-input" id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@business.co.za" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="instagram">Instagram handle <span class="opt">— optional</span></label>
+            <input class="form-input" id="instagram" placeholder="@yourbusiness" />
+          </div>
+        </section>
+
+        <!-- STEP 3: goal -->
+        <section class="step" data-step="3">
+          <h2 class="step-title">What's the goal?</h2>
+          <p class="step-help">Optional — helps us tailor a couple of tips for you. Pick one, or skip.</p>
+          <div class="goal-chips" id="goal-chips"></div>
+        </section>
+
+        <!-- STEP 4: services -->
+        <section class="step" data-step="4">
+          <h2 class="step-title">Your services</h2>
+          <p class="step-help">We've started your menu below — rename, reprice, remove, or add your own.</p>
+          <div id="svc-rows"></div>
+          <p class="svc-hint">Duration in minutes · price however you'd like it shown (e.g. R250, From R250)</p>
+          <button type="button" class="add-svc-btn" id="add-svc">+ Add another service</button>
+        </section>
+
+        <!-- STEP 5: branding -->
+        <section class="step" data-step="5">
+          <h2 class="step-title">Make it yours</h2>
+          <p class="step-help">Both optional — you can change these anytime in your dashboard.</p>
+          <div class="form-group">
+            <label class="form-label">Logo <span class="opt">— optional</span></label>
+            <div class="logo-up">
+              <img class="logo-prev" id="logo-prev" alt="" />
+              <label class="logo-btn" for="logo">Upload logo</label>
+              <input type="file" id="logo" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+              <span class="hint" id="logo-name"></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Brand colour <span class="opt">— optional</span></label>
+            <div class="swatches" id="swatches">
+              <span class="swatch sel" data-c="#B25C7C" style="background:#B25C7C"></span>
+              <span class="swatch" data-c="#C76B52" style="background:#C76B52"></span>
+              <span class="swatch" data-c="#C39A4E" style="background:#C39A4E"></span>
+              <span class="swatch" data-c="#6E8C6F" style="background:#6E8C6F"></span>
+              <span class="swatch" data-c="#3E8E8E" style="background:#3E8E8E"></span>
+              <span class="swatch" data-c="#5B6CB0" style="background:#5B6CB0"></span>
+              <span class="swatch" data-c="#7C5A93" style="background:#7C5A93"></span>
+              <span class="swatch" data-c="#33415C" style="background:#33415C"></span>
+            </div>
+          </div>
+
+          <!-- Live preview: until now people committed to a page they'd never
+               seen. Redraws on every colour/logo change. -->
+          <div class="preview-wrap">
+            <div class="preview-cap">Your page, live preview</div>
+            <div class="preview" id="preview" aria-hidden="true">
+              <div class="pv-head" id="pv-head">
+                <img class="pv-logo" id="pv-logo" alt="" />
+                <div class="pv-name" id="pv-name"></div>
+                <div class="pv-sub" id="pv-sub"></div>
+              </div>
+              <div class="pv-body">
+                <div class="pv-lbl">Choose a service</div>
+                <div id="pv-services"></div>
+                <div class="pv-btn" id="pv-btn">Book now</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 6: review + launch -->
+        <section class="step" data-step="6">
+          <h2 class="step-title">Ready to launch</h2>
+          <p class="step-help">Check the details below, then create your page.</p>
+          <div id="review"></div>
+
+          <!-- honeypot: humans never see/fill this -->
+          <div class="hp" aria-hidden="true">
+            <label>Company URL<input type="text" id="company_url" tabindex="-1" autocomplete="off" /></label>
+          </div>
+
+          <div class="consent">
+            <input type="checkbox" id="consent" />
+            <label for="consent">I agree to Streamline contacting me about my booking page. See our <a href="https://streamline-automations.agency/privacy" target="_blank" rel="noopener">privacy policy</a>. You can opt out anytime.</label>
+          </div>
+        </section>
+
+        <div class="wiz-nav" id="wiz-nav"></div>
       </div>
-
-      <div class="row">
-        <div class="form-group">
-          <label class="form-label" for="ownerName">Your name</label>
-          <input class="form-input" id="ownerName" name="ownerName" autocomplete="name" placeholder="e.g. Thandi" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="niche">What you do</label>
-          <select class="form-input" id="niche" name="niche" required>
-            <option value="" disabled selected>Choose…</option>
-            <option value="nails">Nails</option>
-            <option value="lashes">Lashes</option>
-            <option value="hair">Hair</option>
-            <option value="brows">Brows</option>
-            <option value="spa">Spa &amp; beauty</option>
-            <option value="barber">Barber</option>
-          </select>
-        </div>
-      </div>
-      <p class="hint" style="margin-top:-8px;margin-bottom:14px;">We'll pre-load a starter menu for your type — you can edit every price later.</p>
-
-      <div class="row">
-        <div class="form-group">
-          <label class="form-label" for="suburb">Suburb / area</label>
-          <input class="form-input" id="suburb" name="suburb" placeholder="e.g. Sandton" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="whatsapp">WhatsApp number</label>
-          <input class="form-input" id="whatsapp" name="whatsapp" inputmode="tel" autocomplete="tel" placeholder="e.g. 071 234 5678" required />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="email">Email <span class="opt">(we'll send your links + PIN here)</span></label>
-        <input class="form-input" id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@salon.co.za" required />
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="instagram">Instagram handle <span class="opt">— optional</span></label>
-        <input class="form-input" id="instagram" name="instagram" placeholder="@yoursalon" />
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Logo <span class="opt">— optional</span></label>
-        <div class="logo-up">
-          <img class="logo-prev" id="logo-prev" alt="" />
-          <label class="logo-btn" for="logo">Upload logo</label>
-          <input type="file" id="logo" accept="image/png,image/jpeg,image/webp" style="display:none;" />
-          <span class="hint" id="logo-name"></span>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Brand colour <span class="opt">— optional</span></label>
-        <div class="swatches" id="swatches">
-          <span class="swatch sel" data-c="#B25C7C" style="background:#B25C7C"></span>
-          <span class="swatch" data-c="#C76B52" style="background:#C76B52"></span>
-          <span class="swatch" data-c="#C39A4E" style="background:#C39A4E"></span>
-          <span class="swatch" data-c="#6E8C6F" style="background:#6E8C6F"></span>
-          <span class="swatch" data-c="#3E8E8E" style="background:#3E8E8E"></span>
-          <span class="swatch" data-c="#5B6CB0" style="background:#5B6CB0"></span>
-          <span class="swatch" data-c="#7C5A93" style="background:#7C5A93"></span>
-          <span class="swatch" data-c="#33415C" style="background:#33415C"></span>
-        </div>
-      </div>
-
-      <!-- honeypot: humans never see/fill this -->
-      <div class="hp" aria-hidden="true">
-        <label>Company URL<input type="text" name="company_url" id="company_url" tabindex="-1" autocomplete="off" /></label>
-      </div>
-
-      <div class="consent">
-        <input type="checkbox" id="consent" name="consent" />
-        <label for="consent">I agree to Streamline contacting me about my booking page. See our <a href="https://streamline-automations.agency/privacy" target="_blank" rel="noopener">privacy policy</a>. You can opt out anytime.</label>
-      </div>
-
-      <button type="submit" class="submit-btn" id="submit-btn">Create my booking page</button>
     </form>
 
-    <p class="follow">Want more bookings? <a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener">Follow @streamline_automations</a> for salon tips.</p>
+    <p class="follow" id="follow-line">Want more bookings? <a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener">Follow @streamline_automations</a> for tips.</p>
 
     <!-- ============ SUCCESS ============ -->
     <div class="card" id="success">
@@ -215,6 +334,11 @@
         <button class="copy-btn" id="copy-pin" type="button">Copy PIN</button>
       </div>
 
+      <div class="goal-tip" id="goal-tip" hidden>
+        <div class="lbl">Your first step</div>
+        <p id="goal-tip-text"></p>
+      </div>
+
       <p class="a2hs">
         <strong>Add it to your phone:</strong> open your booking page, tap <em>Share</em> →
         <em>Add to Home&nbsp;Screen</em>. It'll work just like an app.
@@ -222,7 +346,7 @@
 
       <button class="share-btn" id="share-btn" type="button">Share your new page 🎉</button>
       <a class="ghost-btn" id="open-admin" href="#" target="_blank" rel="noopener">Open my dashboard</a>
-      <p class="follow" style="margin-top:16px;"><a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener">Follow @streamline_automations</a> for salon tips →</p>
+      <p class="follow" style="margin-top:16px;"><a href="https://instagram.com/streamline_automations" target="_blank" rel="noopener">Follow @streamline_automations</a> for tips →</p>
     </div>
 
     <footer>
@@ -231,13 +355,78 @@
   </div>
 
   <script>
-    const form = document.getElementById('signup-form');
-    const errBanner = document.getElementById('err-banner');
-    const submitBtn = document.getElementById('submit-btn');
-    let accentColour = '#B25C7C';
-    let logoDataUrl = null;
+    // Mirrors api/_niche-catalog.js — presentation data only, keep in sync.
+    const CATALOG = [
+      { id:'nails', label:'Nails', example:'Gel, acrylic, manicures', services:[
+        {name:'Gel overlay',duration:75,price:'R250'},{name:'Acrylic full set',duration:120,price:'R350'},
+        {name:'Fills',duration:75,price:'R250'},{name:'Manicure',duration:45,price:'R180'},{name:'Pedicure',duration:60,price:'R220'} ] },
+      { id:'lashes', label:'Lashes', example:'Classic, hybrid, volume sets', services:[
+        {name:'Classic set',duration:120,price:'R365'},{name:'Hybrid set',duration:135,price:'R450'},
+        {name:'Volume set',duration:150,price:'R550'},{name:'Lash fill',duration:75,price:'R300'} ] },
+      { id:'hair', label:'Hair', example:'Cuts, colour, styling', services:[
+        {name:'Cut & style',duration:60,price:'R280'},{name:'Colour',duration:150,price:'R750'},
+        {name:'Treatment',duration:45,price:'R250'},{name:'Blow-wave',duration:45,price:'R180'} ] },
+      { id:'brows', label:'Brows', example:'Shaping, tinting, lamination', services:[
+        {name:'Shape & tint',duration:30,price:'R180'},{name:'Lamination',duration:60,price:'R350'},
+        {name:'Microblading',duration:120,price:'R1200'} ] },
+      { id:'spa', label:'Spa & beauty', example:'Massage, facials, treatments', services:[
+        {name:'Full body massage',duration:60,price:'R450'},{name:'Facial',duration:60,price:'R400'},
+        {name:'Mani + pedi combo',duration:105,price:'R380'} ] },
+      { id:'barber', label:'Barber', example:'Cuts, beard trims', services:[
+        {name:'Cut',duration:30,price:'R150'},{name:'Cut & beard',duration:45,price:'R220'},
+        {name:'Beard trim',duration:20,price:'R100'} ] },
+      { id:'makeup', label:'Makeup artist', example:'Events, bridal, everyday glam', services:[
+        {name:'Everyday glam',duration:60,price:'R350'},{name:'Event / party makeup',duration:75,price:'R450'},
+        {name:'Bridal trial',duration:90,price:'R650'},{name:'Bridal day-of',duration:120,price:'R1200'} ] },
+      { id:'fitness', label:'Fitness & personal training', example:'1-on-1 sessions, small classes', services:[
+        {name:'1-on-1 session',duration:60,price:'R350'},{name:'Assessment & program setup',duration:60,price:'R400'},
+        {name:'Small group session',duration:45,price:'R180'},{name:'Online coaching check-in',duration:30,price:'R150'} ] },
+      { id:'cleaning', label:'Cleaning services', example:'Homes, offices, move-outs', services:[
+        {name:'Standard home clean',duration:120,price:'R450'},{name:'Deep clean',duration:240,price:'R850'},
+        {name:'Move-in / move-out clean',duration:240,price:'R950'},{name:'Office clean',duration:120,price:'R500'} ] },
+      { id:'petgrooming', label:'Pet grooming', example:'Wash, cut, nail trims', services:[
+        {name:'Wash & blow-dry',duration:45,price:'R200'},{name:'Full groom',duration:90,price:'R400'},
+        {name:'Nail trim',duration:15,price:'R80'},{name:'De-shed treatment',duration:60,price:'R280'} ] },
+      { id:'photography', label:'Photography', example:'Portraits, events, studio shoots', services:[
+        {name:'Mini portrait session',duration:30,price:'R650'},{name:'Standard session',duration:60,price:'R1200'},
+        {name:'Event coverage (per hour)',duration:60,price:'R1500'},{name:'Studio family shoot',duration:90,price:'R1800'} ] },
+      { id:'tutoring', label:'Tutoring & coaching', example:'1-on-1 and group sessions', services:[
+        {name:'Single session',duration:60,price:'R250'},{name:'Exam prep intensive',duration:90,price:'R350'},
+        {name:'Assessment consult',duration:45,price:'R200'},{name:'Group study session',duration:60,price:'R150'} ] },
+      { id:'other', label:'Something else', example:'Tell us what you do', services:[] },
+    ];
+    const GOALS = [
+      { id:'more_bookings', label:'Get more bookings' },
+      { id:'less_whatsapp', label:'Stop the WhatsApp back-and-forth' },
+      { id:'fewer_noshows', label:'Cut down no-shows' },
+      { id:'look_professional', label:'Look more professional online' },
+    ];
+    const TOTAL_STEPS = 6;
+    const SS_KEY = 'streamline-signup-wizard';
 
-    // Recolour the whole page live from a hex — accent + its derived tints/dark.
+    const wiz = {
+      category:null, customNiche:'',
+      businessName:'', ownerName:'', suburb:'', whatsapp:'', email:'', instagram:'',
+      goal:null,
+      services:[],
+      accentColour:'#B25C7C', logoDataUrl:null, logoName:'',
+      consent:false,
+    };
+    let currentStep = 1;
+
+    // ---- resume from sessionStorage (logo excluded — too large / re-upload if lost) ----
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SS_KEY) || 'null');
+      if (saved && typeof saved === 'object') Object.assign(wiz, saved, { logoDataUrl:null, logoName:'' });
+    } catch (_) {}
+    function persist() {
+      try {
+        const { logoDataUrl, logoName, ...rest } = wiz;
+        sessionStorage.setItem(SS_KEY, JSON.stringify(rest));
+      } catch (_) {}
+    }
+
+    // ---- accent recolour (live) ----
     function hexToRgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
     function darkenHex(hex, f) {
       const [r, g, b] = hexToRgb(hex);
@@ -253,33 +442,217 @@
       s.setProperty('--accent-soft', `rgba(${r},${g},${b},0.14)`);
       s.setProperty('--accent-focus', `rgba(${r},${g},${b},0.22)`);
     }
-    applyAccent(accentColour); // start on the first swatch's colour
+    applyAccent(wiz.accentColour);
 
-    // accent swatches — update the live page colour, not just the saved value
+    // ---- step 1: category grid ----
+    const catGrid = document.getElementById('cat-grid');
+    catGrid.innerHTML = CATALOG.map(c => `
+      <div class="cat-tile${wiz.category===c.id?' sel':''}" data-id="${c.id}">
+        <div class="cat-label">${c.label}</div>
+        <div class="cat-example">${c.example}</div>
+      </div>`).join('');
+    const otherWrap = document.getElementById('other-input-wrap');
+    const customNicheInput = document.getElementById('customNiche');
+    customNicheInput.value = wiz.customNiche;
+    function selectCategory(id) {
+      wiz.category = id;
+      document.querySelectorAll('.cat-tile').forEach(t => t.classList.toggle('sel', t.dataset.id === id));
+      otherWrap.style.display = id === 'other' ? 'block' : 'none';
+      if (id === 'other') customNicheInput.focus();
+      persist();
+    }
+    catGrid.addEventListener('click', (e) => {
+      const tile = e.target.closest('.cat-tile');
+      if (!tile) return;
+      selectCategory(tile.dataset.id);
+    });
+    if (wiz.category) selectCategory(wiz.category);
+    customNicheInput.addEventListener('input', () => { wiz.customNiche = customNicheInput.value; persist(); });
+
+    // ---- step 2: about you ----
+    ['businessName','ownerName','suburb','whatsapp','email','instagram'].forEach((id) => {
+      const el = document.getElementById(id);
+      el.value = wiz[id];
+      el.addEventListener('input', () => { wiz[id] = el.value; persist(); });
+    });
+
+    // ---- step 3: goal chips ----
+    const goalChips = document.getElementById('goal-chips');
+    goalChips.innerHTML = GOALS.map(g => `<div class="chip${wiz.goal===g.id?' sel':''}" data-id="${g.id}">${g.label}</div>`).join('');
+    goalChips.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      wiz.goal = wiz.goal === chip.dataset.id ? null : chip.dataset.id;
+      goalChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('sel', c.dataset.id === wiz.goal));
+      persist();
+    });
+
+    // ---- step 4: services editor ----
+    // MIRRORS api/_brand.js FREE_SERVICE_CAP. Letting someone build a menu here
+    // that's bigger than admin will let them save would strand them behind an
+    // upgrade prompt on their own services — so the wizard stops at the cap too.
+    const FREE_SERVICE_CAP = 5;
+    const svcRows = document.getElementById('svc-rows');
+    const addSvcBtn = document.getElementById('add-svc');
+
+    function syncAddBtn() {
+      const atCap = wiz.services.length >= FREE_SERVICE_CAP;
+      addSvcBtn.disabled = atCap;
+      addSvcBtn.textContent = atCap
+        ? `Your free page includes ${FREE_SERVICE_CAP} services`
+        : '+ Add another service';
+    }
+    function renderServiceRows() {
+      svcRows.innerHTML = wiz.services.map((s, i) => `
+        <div class="svc-row" data-i="${i}">
+          <input class="form-input" data-f="name" placeholder="Service name" value="${escAttr(s.name)}" />
+          <input class="form-input" data-f="duration" type="number" min="5" max="480" step="5" placeholder="60" value="${s.duration||''}" />
+          <input class="form-input" data-f="price" placeholder="R250" value="${escAttr(s.price)}" />
+          <button type="button" class="svc-rm" aria-label="Remove service">×</button>
+        </div>`).join('');
+      syncAddBtn();
+    }
+    function escAttr(s) { return String(s ?? '').replace(/"/g, '&quot;'); }
+    function initServicesForCategory() {
+      if (wiz.services.length > 0) return; // already edited or restored from a saved session
+      const cat = CATALOG.find(c => c.id === wiz.category);
+      wiz.services = cat && cat.services.length
+        ? cat.services.slice(0, FREE_SERVICE_CAP).map(s => ({ ...s }))
+        : [{ name:'', duration:60, price:'' }];
+      renderServiceRows();
+    }
+    svcRows.addEventListener('input', (e) => {
+      const row = e.target.closest('.svc-row');
+      if (!row) return;
+      const i = Number(row.dataset.i);
+      const f = e.target.dataset.f;
+      wiz.services[i][f] = f === 'duration' ? Number(e.target.value) : e.target.value;
+      persist();
+    });
+    svcRows.addEventListener('click', (e) => {
+      const btn = e.target.closest('.svc-rm');
+      if (!btn) return;
+      const i = Number(btn.closest('.svc-row').dataset.i);
+      wiz.services.splice(i, 1);
+      if (wiz.services.length === 0) wiz.services.push({ name:'', duration:60, price:'' });
+      renderServiceRows();
+      persist();
+    });
+    addSvcBtn.addEventListener('click', () => {
+      if (wiz.services.length >= FREE_SERVICE_CAP) return;
+      wiz.services.push({ name:'', duration:30, price:'' });
+      renderServiceRows();
+      persist();
+    });
+
+    // ---- step 5: branding ----
     document.getElementById('swatches').addEventListener('click', (e) => {
       const sw = e.target.closest('.swatch');
       if (!sw) return;
       document.querySelectorAll('.swatch').forEach(s => s.classList.remove('sel'));
       sw.classList.add('sel');
-      accentColour = sw.dataset.c;
-      applyAccent(accentColour);
+      wiz.accentColour = sw.dataset.c;
+      applyAccent(wiz.accentColour);
+      persist();
     });
-
-    // logo → dataURL preview
     document.getElementById('logo').addEventListener('change', (e) => {
       const f = e.target.files[0];
       if (!f) return;
       if (f.size > 2 * 1024 * 1024) { showErr('That logo is over 2MB — please pick a smaller image.'); return; }
       const reader = new FileReader();
       reader.onload = () => {
-        logoDataUrl = reader.result;
+        wiz.logoDataUrl = reader.result;
+        wiz.logoName = f.name;
         const prev = document.getElementById('logo-prev');
-        prev.src = logoDataUrl; prev.style.display = 'block';
+        prev.src = wiz.logoDataUrl; prev.style.display = 'block';
         document.getElementById('logo-name').textContent = f.name;
+        renderPreview();
       };
       reader.readAsDataURL(f);
     });
 
+    // ---- live preview ----
+    // Colour needs no work here: applyAccent() writes the CSS variables on
+    // :root and the preview is styled from those, so swatches repaint it.
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function renderPreview() {
+      document.getElementById('pv-name').textContent =
+        (wiz.businessName || '').trim() || 'Your business name';
+
+      const cat = CATALOG.find(c => c.id === wiz.category);
+      const type = wiz.category === 'other'
+        ? (wiz.customNiche || '').trim()
+        : (cat ? cat.label : '');
+      document.getElementById('pv-sub').textContent =
+        [type, (wiz.suburb || '').trim()].filter(Boolean).join(' · ');
+
+      const logo = document.getElementById('pv-logo');
+      if (wiz.logoDataUrl) { logo.src = wiz.logoDataUrl; logo.style.display = 'block'; }
+      else { logo.removeAttribute('src'); logo.style.display = 'none'; }
+
+      const rows = wiz.services.filter(s => (s.name || '').trim()).slice(0, 4);
+      document.getElementById('pv-services').innerHTML = rows.length
+        ? rows.map(s => `
+            <div class="pv-svc">
+              <span class="n">${escHtml(s.name)}${s.duration ? `<span class="d">· ${Number(s.duration)} min</span>` : ''}</span>
+              <span class="p">${escHtml(s.price || '')}</span>
+            </div>`).join('')
+        : '<div class="pv-empty">Your services will appear here.</div>';
+    }
+
+    // ---- step 6: review ----
+    function renderReview() {
+      const cat = CATALOG.find(c => c.id === wiz.category);
+      const catLabel = wiz.category === 'other' ? (wiz.customNiche || 'Something else') : (cat ? cat.label : '—');
+      const goalLabel = GOALS.find(g => g.id === wiz.goal)?.label;
+      const svcList = wiz.services.filter(s => s.name && s.name.trim())
+        .map(s => `${escHtml(s.name)} — ${s.duration || 0} min — ${escHtml(s.price || '')}`).join('<br>');
+
+      document.getElementById('review').innerHTML = `
+        <div class="review-block">
+          <button type="button" class="edit-link" data-goto="1">Edit</button>
+          <div class="lbl">Business type</div>
+          <div class="val">${escHtml(catLabel)}</div>
+        </div>
+        <div class="review-block">
+          <button type="button" class="edit-link" data-goto="2">Edit</button>
+          <div class="lbl">Your details</div>
+          <div class="val">
+            ${escHtml(wiz.businessName)}<br>
+            ${escHtml(wiz.ownerName)} · ${escHtml(wiz.suburb)}<br>
+            ${escHtml(wiz.whatsapp)} · ${escHtml(wiz.email)}
+            ${wiz.instagram ? `<br>@${escHtml(wiz.instagram.replace(/^@/, ''))}` : ''}
+          </div>
+        </div>
+        ${goalLabel ? `
+        <div class="review-block">
+          <button type="button" class="edit-link" data-goto="3">Edit</button>
+          <div class="lbl">Goal</div>
+          <div class="val">${escHtml(goalLabel)}</div>
+        </div>` : ''}
+        <div class="review-block">
+          <button type="button" class="edit-link" data-goto="4">Edit</button>
+          <div class="lbl">Services</div>
+          <div class="val">${svcList || '—'}</div>
+        </div>
+        <div class="review-block">
+          <button type="button" class="edit-link" data-goto="5">Edit</button>
+          <div class="lbl">Branding</div>
+          <div class="val"><span class="review-swatch" style="background:${wiz.accentColour}"></span>${wiz.accentColour}${wiz.logoName ? ` · ${escHtml(wiz.logoName)}` : ''}</div>
+        </div>`;
+    }
+    function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    document.getElementById('review').addEventListener('click', (e) => {
+      const btn = e.target.closest('.edit-link');
+      if (!btn) return;
+      goToStep(Number(btn.dataset.goto));
+    });
+    document.getElementById('consent').addEventListener('change', (e) => { wiz.consent = e.target.checked; });
+
+    // ---- wizard nav / validation ----
+    const errBanner = document.getElementById('err-banner');
     function showErr(msg) {
       errBanner.textContent = msg;
       errBanner.classList.add('show');
@@ -287,33 +660,90 @@
     }
     function clearErr() { errBanner.classList.remove('show'); }
 
+    function validateStep(n) {
+      if (n === 1) {
+        if (!wiz.category) return 'Pick a business type to continue.';
+        if (wiz.category === 'other' && !wiz.customNiche.trim()) return 'Tell us what you do.';
+      }
+      if (n === 2) {
+        if (!wiz.businessName.trim()) return 'Business name is required.';
+        if (!wiz.ownerName.trim()) return 'Your name is required.';
+        if (!wiz.suburb.trim()) return 'Suburb / area is required.';
+        if (!wiz.whatsapp.trim()) return 'WhatsApp number is required.';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wiz.email.trim())) return 'A valid email is required.';
+      }
+      if (n === 4) {
+        wiz.services = wiz.services.filter(s => s.name && s.name.trim());
+        if (wiz.services.length === 0) {
+          wiz.services.push({ name:'', duration:60, price:'' });
+          return 'Add at least one service.';
+        }
+        for (const s of wiz.services) {
+          if (!s.price || !String(s.price).trim()) return `Add a price for "${s.name}".`;
+          if (!s.duration || s.duration < 5) return `Set a duration for "${s.name}".`;
+        }
+      }
+      if (n === 6 && !wiz.consent) return 'Please tick the consent box so we can set up your page.';
+      return null;
+    }
+
+    function renderNav() {
+      const nav = document.getElementById('wiz-nav');
+      const isLast = currentStep === TOTAL_STEPS;
+      nav.innerHTML = `
+        ${currentStep > 1 ? '<button type="button" class="btn btn-ghost" id="nav-back">Back</button>' : ''}
+        <button type="${isLast ? 'submit' : 'button'}" class="btn btn-primary" id="nav-next">${isLast ? 'Create my booking page' : 'Continue'}</button>`;
+      if (currentStep > 1) document.getElementById('nav-back').addEventListener('click', () => goToStep(currentStep - 1));
+      if (!isLast) document.getElementById('nav-next').addEventListener('click', () => {
+        const err = validateStep(currentStep);
+        if (err) { showErr(err); if (currentStep === 4) renderServiceRows(); return; }
+        goToStep(currentStep + 1);
+      });
+    }
+
+    function goToStep(n) {
+      clearErr();
+      currentStep = n;
+      document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', Number(s.dataset.step) === n));
+      document.getElementById('step-label').textContent = `Step ${n} of ${TOTAL_STEPS}`;
+      document.getElementById('progress-fill').style.width = `${(n / TOTAL_STEPS) * 100}%`;
+      if (n === 4) initServicesForCategory();
+      if (n === 5) renderPreview();
+      if (n === 6) renderReview();
+      renderNav();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      persist();
+    }
+    renderNav();
+
+    // ---- submit ----
+    const form = document.getElementById('signup-form');
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const err = validateStep(6);
+      if (err) { showErr(err); return; }
       clearErr();
 
-      const val = (id) => document.getElementById(id).value.trim();
       const payload = {
-        businessName: val('businessName'),
-        ownerName: val('ownerName'),
-        niche: document.getElementById('niche').value,
-        suburb: val('suburb'),
-        whatsapp: val('whatsapp'),
-        email: val('email'),
-        instagram: val('instagram') || null,
-        accentColour,
-        logoDataUrl,
-        consent: document.getElementById('consent').checked,
+        businessName: wiz.businessName.trim(),
+        ownerName: wiz.ownerName.trim(),
+        niche: wiz.category,
+        customNiche: wiz.category === 'other' ? wiz.customNiche.trim() : undefined,
+        suburb: wiz.suburb.trim(),
+        whatsapp: wiz.whatsapp.trim(),
+        email: wiz.email.trim(),
+        instagram: wiz.instagram.trim() || null,
+        goal: wiz.goal || undefined,
+        services: wiz.services.map(s => ({ name: s.name.trim(), duration: Number(s.duration), price: String(s.price).trim() })),
+        accentColour: wiz.accentColour,
+        logoDataUrl: wiz.logoDataUrl,
+        consent: wiz.consent,
         company_url: document.getElementById('company_url').value, // honeypot
       };
 
-      // light client-side guards (server re-validates)
-      if (!payload.businessName || !payload.ownerName || !payload.niche || !payload.suburb || !payload.whatsapp || !payload.email) {
-        showErr('Please fill in all the required fields.'); return;
-      }
-      if (!payload.consent) { showErr('Please tick the consent box so we can set up your page.'); return; }
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spin"></span>Creating your page…';
+      const nextBtn = document.getElementById('nav-next');
+      nextBtn.disabled = true;
+      nextBtn.innerHTML = '<span class="spin"></span>Creating your page…';
       try {
         const r = await fetch('/api/signup', {
           method: 'POST',
@@ -323,15 +753,16 @@
         const data = await r.json();
         if (!r.ok || !data.ok) {
           showErr(data.error || 'Something went wrong. Please try again.');
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Create my booking page';
+          nextBtn.disabled = false;
+          nextBtn.textContent = 'Create my booking page';
           return;
         }
+        try { sessionStorage.removeItem(SS_KEY); } catch (_) {}
         showSuccess(data);
       } catch (err) {
         showErr('Network error. Please check your connection and try again.');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create my booking page';
+        nextBtn.disabled = false;
+        nextBtn.textContent = 'Create my booking page';
       }
     });
 
@@ -343,18 +774,24 @@
       document.getElementById('open-admin').href = data.adminUrl;
       document.getElementById('s-pin').textContent = data.pin;
 
+      if (data.goalTip) {
+        document.getElementById('goal-tip-text').textContent = data.goalTip;
+        document.getElementById('goal-tip').hidden = false;
+      }
+
       document.getElementById('copy-pin').addEventListener('click', () => {
         navigator.clipboard?.writeText(data.pin);
         document.getElementById('copy-pin').textContent = 'Copied ✓';
       });
       document.getElementById('share-btn').addEventListener('click', async () => {
-        const shareData = { title: 'Book with us', text: 'Book your appointment online 💅', url: data.publicUrl };
+        const shareData = { title: 'Book with us', text: 'Book your appointment online', url: data.publicUrl };
         if (navigator.share) { try { await navigator.share(shareData); } catch (_) {} }
         else { navigator.clipboard?.writeText(data.publicUrl); document.getElementById('share-btn').textContent = 'Link copied ✓'; }
       });
 
       form.style.display = 'none';
-      document.querySelector('.follow').style.display = 'none';
+      document.querySelector('.progress-wrap').style.display = 'none';
+      document.getElementById('follow-line').style.display = 'none';
       document.querySelector('.hero .sub').textContent = '';
       document.querySelector('.hero h1').textContent = '';
       document.querySelector('.hero .eyebrow').textContent = '';

@@ -1,5 +1,6 @@
 // api/admin-save.js — PIN-validated writes for services, hours, branding, booking status.
 const { getSupabase, verifyToken, readBody } = require('./_auth');
+const { isFreeAccent, FREE_SERVICE_CAP, isAllowedImageUrl } = require('./_brand');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -21,8 +22,9 @@ module.exports = async (req, res) => {
 
   try {
     if (type === 'services') {
-      // Free-tier cap. Premium businesses bypass.
-      const FREE_SERVICE_CAP = 5;
+      // Free-tier cap (shared with the signup wizard via _brand.js so an owner
+      // can never create more services at signup than they're allowed to edit).
+      // Premium businesses bypass.
       const incoming = (data.services || []).length;
       if (incoming > FREE_SERVICE_CAP) {
         const { data: biz } = await supabase
@@ -69,20 +71,27 @@ module.exports = async (req, res) => {
     } else if (type === 'branding') {
       const patch = {};
       if (typeof data.name === 'string' && data.name.trim()) patch.name = data.name.trim();
-      // Free tier may only set accent colours from the preset palette.
-      const PRESETS = ['#A8456B','#7B3FE4','#0D9488','#F87171','#84CC16','#475569'];
+      // Free tier may CHANGE its accent only to a colour the system offers
+      // (see _brand.js), but may always KEEP whatever it already has.
+      //
+      // That second half matters: the branding form posts the current colour
+      // alongside the name, and live tenants sit on colours no current palette
+      // contains — auto-assigned niche defaults, one-offs set by hand, colours
+      // from older palettes. Gating on the palette alone meant renaming your
+      // business returned "upgrade to premium" for a colour you never chose
+      // and weren't even trying to change. Only an actual change is gated.
       if (typeof data.accentColor === 'string') {
-        const hex = data.accentColor.trim().toUpperCase();
-        const isPreset = PRESETS.includes(hex);
-        if (!isPreset) {
-          const { data: biz } = await supabase
-            .from('businesses').select('is_premium').eq('id', businessId).maybeSingle();
-          if (!biz || !biz.is_premium) {
-            res.status(402).json({ error: 'Custom colours unlock on premium. Pick a preset or upgrade.' });
-            return;
-          }
+        const next = data.accentColor.trim();
+        const { data: biz } = await supabase
+          .from('businesses').select('is_premium, accent_color').eq('id', businessId).maybeSingle();
+        const current = (biz && biz.accent_color ? String(biz.accent_color) : '').trim();
+        const unchanged = current && next.toUpperCase() === current.toUpperCase();
+
+        if (!unchanged && !isFreeAccent(next) && !(biz && biz.is_premium)) {
+          res.status(402).json({ error: 'Custom colours unlock on premium. Pick a preset or upgrade.' });
+          return;
         }
-        patch.accent_color = data.accentColor;
+        patch.accent_color = next;
       }
       const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
@@ -91,8 +100,8 @@ module.exports = async (req, res) => {
       const raw = data && data.logo_url;
       const url = raw == null ? null : String(raw).trim();
       const value = url === '' ? null : url;
-      if (value && !/^https:\/\/res\.cloudinary\.com\//i.test(value)) {
-        res.status(400).json({ error: 'Logo URL must come from Cloudinary' });
+      if (value && !isAllowedImageUrl(value)) {
+        res.status(400).json({ error: 'Logo URL must come from an upload on this site' });
         return;
       }
       const { error } = await supabase.from('businesses').update({ logo_url: value }).eq('id', businessId);
@@ -102,8 +111,8 @@ module.exports = async (req, res) => {
       const raw = data && data.image_url;
       const url = raw == null ? null : String(raw).trim();
       const value = url === '' ? null : url;
-      if (value && !/^https:\/\/res\.cloudinary\.com\//i.test(value)) {
-        res.status(400).json({ error: 'Banner URL must come from Cloudinary' });
+      if (value && !isAllowedImageUrl(value)) {
+        res.status(400).json({ error: 'Banner URL must come from an upload on this site' });
         return;
       }
       const { error } = await supabase.from('businesses').update({ image_url: value }).eq('id', businessId);
@@ -134,8 +143,8 @@ module.exports = async (req, res) => {
       const name = (data && typeof data.name === 'string') ? data.name.trim() : '';
       if (!name) { res.status(400).json({ error: 'Name required' }); return; }
       const photo = (data && data.photo_url) ? String(data.photo_url).trim() : null;
-      if (photo && !/^https:\/\/res\.cloudinary\.com\//i.test(photo)) {
-        res.status(400).json({ error: 'Photo URL must come from Cloudinary' });
+      if (photo && !isAllowedImageUrl(photo)) {
+        res.status(400).json({ error: 'Photo URL must come from an upload on this site' });
         return;
       }
       const { count, error: cErr } = await supabase
@@ -169,8 +178,8 @@ module.exports = async (req, res) => {
         const raw = data.photo_url;
         const url = raw == null ? null : String(raw).trim();
         const value = url === '' ? null : url;
-        if (value && !/^https:\/\/res\.cloudinary\.com\//i.test(value)) {
-          res.status(400).json({ error: 'Photo URL must come from Cloudinary' });
+        if (value && !isAllowedImageUrl(value)) {
+          res.status(400).json({ error: 'Photo URL must come from an upload on this site' });
           return;
         }
         patch.photo_url = value;

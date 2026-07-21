@@ -20,8 +20,32 @@
 //   BREVO_API_KEY, BREVO_FROM            — welcome email (optional; skipped if unset)
 
 const { getSupabase, readBody } = require('./_auth');
+const { findCategory, GOALS, findGoal } = require('./_niche-catalog');
+const { FREE_SERVICE_CAP } = require('./_brand');
+const { esc, sendEmail, emailShell, pinAndLinksHtml } = require('./_email');
 
-const NICHES = ['nails', 'lashes', 'hair', 'brows', 'spa', 'barber'];
+const GOAL_IDS = GOALS.map((g) => g.id);
+
+// Wizard sends its own edited/pre-filled service menu; keep it sane server-side.
+// Capped at the same FREE_SERVICE_CAP admin enforces — creating more here than
+// admin will let them save would strand the owner behind a 402 on the services
+// step forever. The wizard already stops them at the cap; this is the backstop,
+// so it truncates rather than rejecting (never block someone from getting a page).
+function sanitizeServices(input) {
+  if (!Array.isArray(input)) return null;
+  const rows = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue;
+    const name = String(raw.name || '').trim().slice(0, 60);
+    const price = String(raw.price || '').trim().slice(0, 20);
+    const durationNum = Number(raw.duration);
+    if (!name || !price) continue;
+    if (!Number.isFinite(durationNum) || durationNum < 5 || durationNum > 480) continue;
+    rows.push({ name, duration: Math.round(durationNum), price });
+    if (rows.length >= FREE_SERVICE_CAP) break;
+  }
+  return rows;
+}
 
 // ---- best-effort per-IP rate-limit -----------------------------------------
 // In-memory only: each warm serverless instance keeps its own window, so this is
@@ -101,64 +125,23 @@ async function uploadLogo(supabase, slug, dataUrl) {
   }
 }
 
-function welcomeEmailHtml({ businessName, ownerName, publicUrl, adminUrl, pin, accent }) {
-  const a = accent && /^#[0-9A-Fa-f]{6}$/.test(accent) ? accent : '#A8456B';
-  return `<!doctype html><html><body style="margin:0;background:#FAF8F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1B1815">
-  <div style="max-width:560px;margin:0 auto;padding:32px 20px">
-    <div style="background:#fff;border-radius:16px;border:1px solid #E8E2D9;padding:32px 28px">
-      <div style="font-size:13px;font-weight:600;color:${a};letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px">Your booking page is live</div>
-      <h1 style="margin:0 0 6px;font-size:26px;font-weight:600;color:#1B1815">${esc(businessName)}</h1>
-      <p style="margin:0 0 22px;color:#6B6258;font-size:14px;line-height:1.6">Hi ${esc(ownerName || 'there')}, everything's set up. Keep this email — it has your private admin PIN.</p>
-
-      <div style="border-top:1px solid #E8E2D9;padding-top:18px">
-        <p style="margin:0 0 4px;font-size:12px;color:#A39A8E;text-transform:uppercase;letter-spacing:0.05em">Your booking page</p>
-        <p style="margin:0 0 16px"><a href="${esc(publicUrl)}" style="color:${a};font-weight:600;font-size:15px;text-decoration:none;word-break:break-all">${esc(publicUrl)}</a></p>
-
-        <p style="margin:0 0 4px;font-size:12px;color:#A39A8E;text-transform:uppercase;letter-spacing:0.05em">Your admin dashboard</p>
-        <p style="margin:0 0 16px"><a href="${esc(adminUrl)}" style="color:${a};font-weight:600;font-size:15px;text-decoration:none;word-break:break-all">${esc(adminUrl)}</a></p>
-
-        <div style="background:#FAF8F5;border:1px solid #E8E2D9;border-radius:10px;padding:14px 16px;margin-top:8px">
-          <p style="margin:0;font-size:12px;color:#A39A8E;text-transform:uppercase;letter-spacing:0.05em">Admin PIN</p>
-          <p style="margin:4px 0 0;font-size:30px;font-weight:700;letter-spacing:0.18em;color:#1B1815">${esc(pin)}</p>
-          <p style="margin:6px 0 0;font-size:12px;color:#6B6258">Keep this private — it's how you log in to manage bookings.</p>
-        </div>
-      </div>
-
-      <div style="margin-top:22px"><a href="${esc(adminUrl)}" style="display:inline-block;background:${a};color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:10px;font-size:14px">Open your dashboard</a></div>
-
+function welcomeEmailHtml({ businessName, ownerName, publicUrl, adminUrl, pin, accent, goalTip }) {
+  // If they told us what they're here for, answer it instead of giving everyone
+  // the same generic "share your page" line.
+  const nextStep = goalTip
+    || 'Share your page with clients so they can book in a tap — every booking lands in your dashboard automatically.';
+  return emailShell({
+    accent,
+    eyebrow: 'Your booking page is live',
+    heading: businessName,
+    intro: `Hi ${esc(ownerName || 'there')}, everything's set up. Keep this email — it has your private admin PIN.`,
+    bodyHtml: pinAndLinksHtml({ accent, publicUrl, adminUrl, pin }) + `
       <p style="margin:24px 0 0;color:#6B6258;font-size:13px;line-height:1.7">
         <strong style="color:#1B1815">Add it to your phone:</strong> open your booking page in your browser,
         tap <em>Share</em> → <em>Add to Home Screen</em>. It'll behave like an app.<br><br>
-        Share your page with clients so they can book in a tap — every booking lands in your dashboard automatically.
-      </p>
-    </div>
-    <p style="text-align:center;color:#A39A8E;font-size:11px;margin:18px 0 0;letter-spacing:0.04em">
-      Booking by Streamline · <a href="https://streamline-automations.agency/" style="color:#A39A8E">streamline-automations.agency</a>
-    </p>
-  </div></body></html>`;
-}
-function esc(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-async function sendWelcomeEmail(to, html, subject) {
-  const apiKey = process.env.BREVO_API_KEY;
-  const from = process.env.BREVO_FROM || 'Streamline Bookings <noreply@streamline-automations.co.za>';
-  if (!apiKey || !to) return { skipped: true };
-  const parseSender = (s) => {
-    const mm = String(s).match(/^(.*?)\s*<([^>]+)>$/);
-    return mm ? { name: mm[1].trim(), email: mm[2].trim() } : { email: String(s).trim() };
-  };
-  try {
-    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sender: parseSender(from), to: [{ email: to }], subject, htmlContent: html }),
-    });
-    return { ok: r.ok, status: r.status };
-  } catch (e) {
-    return { ok: false, error: String(e) };
-  }
+        ${esc(nextStep)}
+      </p>`,
+  });
 }
 
 module.exports = async (req, res) => {
@@ -177,8 +160,9 @@ module.exports = async (req, res) => {
 
     const body = readBody(req);
     const {
-      businessName, ownerName, niche, suburb, whatsapp, email,
+      businessName, ownerName, niche, customNiche, suburb, whatsapp, email,
       instagram, accentColour, logoDataUrl, consent, turnstileToken,
+      services, goal,
       company_url, // honeypot — must stay empty
     } = body;
 
@@ -199,7 +183,23 @@ module.exports = async (req, res) => {
     const missing = [];
     if (!businessName || !String(businessName).trim()) missing.push('businessName');
     if (!ownerName || !String(ownerName).trim()) missing.push('ownerName');
-    if (!niche || !NICHES.includes(String(niche).toLowerCase())) missing.push('niche');
+
+    // niche: either a known catalog id, or 'other' + a free-text label the
+    // owner typed themselves (stored as the real niche value, not the
+    // literal string "other", so HQ reporting gets a meaningful category).
+    const nicheLower = String(niche || '').trim().toLowerCase();
+    let finalNiche = nicheLower;
+    if (nicheLower === 'other') {
+      const custom = String(customNiche || '').trim();
+      if (!custom) missing.push('customNiche');
+      else finalNiche = custom.slice(0, 60);
+    } else if (!nicheLower || !findCategory(nicheLower)) {
+      missing.push('niche');
+    }
+
+    const cleanServices = sanitizeServices(services);
+    if (!cleanServices || cleanServices.length === 0) missing.push('services');
+
     if (!suburb || !String(suburb).trim()) missing.push('suburb');
     if (!whatsapp || !String(whatsapp).trim()) missing.push('whatsapp');
     if (!isEmail(email)) missing.push('email');
@@ -208,6 +208,10 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Please complete all required fields.', fields: missing });
       return;
     }
+
+    // goal is personalization-only — silently ignore anything unrecognized
+    // rather than blocking signup over it.
+    const cleanGoal = GOAL_IDS.includes(String(goal || '').trim()) ? String(goal).trim() : null;
 
     // 4) captcha
     const cap = await verifyTurnstile(turnstileToken, ip);
@@ -222,13 +226,15 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase.rpc('create_tenant', {
       p_business_name: String(businessName).trim(),
       p_owner_name: String(ownerName).trim(),
-      p_niche: String(niche).toLowerCase(),
+      p_niche: finalNiche,
       p_suburb: String(suburb).trim(),
       p_whatsapp: String(whatsapp).trim(),
       p_email: String(email).trim().toLowerCase(),
       p_instagram: instagram ? String(instagram).trim() : null,
       p_accent_colour: accentColour ? String(accentColour).trim() : null,
       p_base_url: base,
+      p_services: cleanServices,
+      p_goal: cleanGoal,
     });
     if (error) {
       res.status(500).json({ error: 'Could not create your page. Please try again.', detail: error.message });
@@ -237,6 +243,19 @@ module.exports = async (req, res) => {
 
     const result = data || {};
     const slug = result.slug;
+
+    // 5b) record the chosen category so the delivered page can pick a display
+    // typeface that suits the trade (see 006_business_category.sql). Kept as
+    // its own statement, and its error deliberately swallowed: create_tenant
+    // has already succeeded by this point, so nothing here — including this
+    // column not existing yet — may cost someone the page they just made.
+    if (slug) {
+      const { error: catErr } = await supabase
+        .from('businesses')
+        .update({ category: nicheLower })
+        .eq('id', slug);
+      if (catErr) console.warn(`[signup] could not set category for ${slug}: ${catErr.message}`);
+    }
 
     // 6) optional logo (non-blocking)
     if (logoDataUrl && slug) {
@@ -247,6 +266,7 @@ module.exports = async (req, res) => {
     }
 
     // 7) welcome email with all their details (non-blocking on failure)
+    const goalMeta = findGoal(cleanGoal);
     const html = welcomeEmailHtml({
       businessName: String(businessName).trim(),
       ownerName: String(ownerName).trim(),
@@ -254,8 +274,9 @@ module.exports = async (req, res) => {
       adminUrl: result.admin_url,
       pin: result.pin,
       accent: accentColour,
+      goalTip: goalMeta && goalMeta.tip,
     });
-    await sendWelcomeEmail(String(email).trim(), html, `Your ${String(businessName).trim()} booking page is live 🎉`);
+    await sendEmail(String(email).trim(), `Your ${String(businessName).trim()} booking page is live 🎉`, html);
 
     res.status(200).json({
       ok: true,
@@ -263,6 +284,7 @@ module.exports = async (req, res) => {
       pin: result.pin,
       publicUrl: result.public_url,
       adminUrl: result.admin_url,
+      goalTip: (goalMeta && goalMeta.tip) || null,
     });
   } catch (e) {
     res.status(500).json({ error: 'signup crashed', message: (e && e.message) || String(e) });

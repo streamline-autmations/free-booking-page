@@ -1,6 +1,9 @@
 {
   "name": "booking-page",
   "version": "1.0.0",
+  "scripts": {
+    "check": "node scripts/check-sync.mjs"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0"
   }

@@ -1,0 +1,17 @@
+-- 005_drop_legacy_create_tenant_overload.sql
+--
+-- CREATE OR REPLACE FUNCTION does NOT replace a function in place when the
+-- new parameter list doesn't exactly match an existing signature — even if
+-- the new params are only appended with defaults. Postgres creates a second
+-- overload instead. 004_wizard_services_and_goal.sql learned this the hard
+-- way: it left both the pre-existing 11-arg create_tenant(...,p_prospect_id,
+-- p_source) and the new 13-arg create_tenant(...,p_services,p_goal) live at
+-- once. Since every new param has a default, the 11-arg signature is a
+-- strict subset of the 13-arg one — so any caller using only the original
+-- named params (Workflow B2, any direct RPC call that predates this work)
+-- became an ambiguous match between two functions.
+--
+-- Drop the old 11-arg overload. The remaining 13-arg function's
+-- p_services/p_goal defaults (both null) reproduce the old behaviour exactly
+-- for callers that never send those two keys, so this is safe.
+drop function if exists public.create_tenant(text,text,text,text,text,text,text,text,text,uuid,text);

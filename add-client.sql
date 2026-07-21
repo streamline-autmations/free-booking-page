@@ -31,6 +31,13 @@ VALUES (
 --    the moment it's delivered. Niche is one of:
 --    'nails' | 'lashes' | 'hair' | 'brows' | 'spa' | 'barber'
 --    (see supabase/migrations/002_seed_service_presets.sql for the menus).
+--    This manual path is unchanged and still only knows the 6 niches above.
+--    The self-serve /start wizard has its own, larger catalog now (see
+--    api/_niche-catalog.js + SELF_SERVE_SIGNUP.md) and always sends its own
+--    edited service list straight to create_tenant() instead of calling
+--    seed_service_presets() — so onboarding a business by hand in one of the
+--    newer categories means inserting its services directly instead of
+--    calling this function.
 SELECT public.seed_service_presets('BUSINESS-ID-HYPHENATED', 'NICHE');
 
 -- After running:

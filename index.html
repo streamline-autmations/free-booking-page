@@ -4,6 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book Online</title>
+  <meta name="description" content="Book your appointment online in seconds — no calls, no waiting." />
+  <!-- Static, generic — this file is served as-is with no per-request rendering,
+       so a crawler unfurling a shared link (WhatsApp status, Instagram bio,
+       Facebook) sees these before any JS runs. Every tenant's shared link
+       currently unfurls with none of this, which undercuts the exact "share
+       your page" growth loop the signup wizard tells owners to use. A true
+       per-business card (their name, their logo) would need the page served
+       through a function instead of statically — out of scope for now; this
+       at least makes every shared link look like a real, branded product.
+       boot()/loadBusinessData() also patch og:title/description with the
+       real business name for the (smaller) set of unfurlers that run JS. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Streamline Bookings" />
+  <meta property="og:title" id="og-title" content="Book online" />
+  <meta property="og:description" id="og-description" content="Book your appointment online in seconds — no calls, no waiting." />
+  <meta property="og:image" content="https://book.streamline-automations.co.za/icons/sl-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" id="twitter-title" content="Book online" />
+  <meta name="twitter:description" id="twitter-description" content="Book your appointment online in seconds — no calls, no waiting." />
+  <meta name="twitter:image" content="https://book.streamline-automations.co.za/icons/sl-512.png" />
   <link rel="icon" id="favicon" href="" />
   <!-- Premium "add to home screen": these stay empty for free salons; the booking
        page only fills them in (and registers the SW) when the salon is premium. -->
@@ -44,6 +64,34 @@
       --serif:         'Cormorant Garamond', Georgia, serif;
       --ease:          cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    /* ================================================================
+       DISPLAY TYPEFACE PER BUSINESS TYPE
+       Every tenant used to get Cormorant Garamond — a boutique salon
+       serif that reads beautifully for a lash studio and slightly absurd
+       for a cleaning company or a maths tutor. Non-beauty categories opt
+       into a cleaner display face instead (see applyCategoryFont()).
+
+       Only businesses with an explicit non-beauty category are affected:
+       a null category — every tenant created before this existed, plus
+       every manual/n8n build — keeps the original serif untouched.
+
+       Cormorant carries a small x-height and light stems, so the sizes
+       above are tuned to it. Reusing those numbers verbatim with a
+       grotesque makes headings land noticeably heavier and larger, hence
+       the size/weight/tracking corrections below rather than a bare
+       font-family swap.
+       ================================================================ */
+    :root[data-display="sans"] {
+      --serif: 'Outfit', 'DM Sans', -apple-system, sans-serif;
+    }
+    [data-display="sans"] .hero-initials  { font-size: 62px; font-weight: 600; letter-spacing: -0.05em; }
+    [data-display="sans"] .biz-name       { font-size: 32px; font-weight: 600; letter-spacing: -0.025em; }
+    [data-display="sans"] .step-heading    { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+    [data-display="sans"] .svc-name        { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+    [data-display="sans"] .date-num        { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+    [data-display="sans"] .success-title   { font-size: 27px; font-weight: 600; letter-spacing: -0.025em; }
+    [data-display="sans"] .pwa-sheet-title { font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
 
     /* ================================================================
        RESET & BASE
@@ -493,6 +541,10 @@
        ================================================================ */
     .form-group { margin-bottom: 16px; }
 
+    /* honeypot — off-screen, not display:none (bots skip those); a real
+       customer never sees or fills this. Mirrors start.html's .hp. */
+    .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
     .form-label {
       display: block;
       font-size: 13px;
@@ -802,6 +854,12 @@
             <textarea class="form-textarea" id="f-note" rows="3" placeholder="Any special requests or notes for your appointment?"></textarea>
           </div>
 
+          <!-- honeypot: humans never see/fill this -->
+          <div class="hp" aria-hidden="true">
+            <label>Company URL<input type="text" id="f-company-url" tabindex="-1" autocomplete="off" /></label>
+          </div>
+          <div class="form-err-msg" id="e-submit" style="text-align:center;margin-bottom:10px;"></div>
+
           <button type="submit" class="submit-btn" id="submit-btn">
             <div class="spinner" id="spinner"></div>
             <span id="submit-text">Confirm Booking Request →</span>
@@ -969,6 +1027,7 @@ async function loadBusinessData() {
     imageUrl: business.image_url || '',
     accentColor: business.accent_color || '#c084fc',
     accentColorDark: business.accent_dark || '#9333ea',
+    category: business.category || null, // null until 006 lands / for manual builds
     ownerEmail: business.owner_email || '',
     phone: business.phone || '',
     instagramUrl: business.instagram_url || '',
@@ -1091,6 +1150,32 @@ function showLoadingState() {
 }
 
 /* ----------------------------------------------------------------
+   DISPLAY TYPEFACE
+   Categories whose page should NOT wear the boutique salon serif.
+   Anything absent from this set — every beauty category, and every
+   business with no category at all — is left exactly as it was.
+   ---------------------------------------------------------------- */
+const SANS_DISPLAY_CATEGORIES = new Set([
+  'fitness', 'cleaning', 'petgrooming', 'photography', 'tutoring', 'other',
+]);
+
+function applyCategoryFont(category) {
+  const key = String(category || '').trim().toLowerCase();
+  if (!SANS_DISPLAY_CATEGORIES.has(key)) return; // keep Cormorant
+
+  // Loaded on demand: beauty pages, which are most of them, never pay for
+  // a font they don't render.
+  if (!document.getElementById('display-font')) {
+    const link = document.createElement('link');
+    link.id = 'display-font';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap';
+    document.head.appendChild(link);
+  }
+  document.documentElement.setAttribute('data-display', 'sans');
+}
+
+/* ----------------------------------------------------------------
    BOOT
    ---------------------------------------------------------------- */
 function boot() {
@@ -1103,6 +1188,21 @@ function boot() {
 
   // Page title - will be updated after load
   document.title = CONFIG ? `${CONFIG.businessName} — Book Online` : 'Book Online';
+}
+
+// Patches the static og:/twitter: meta tags with the real business name once
+// it's loaded. Most link-unfurlers (WhatsApp, Facebook) snapshot the raw HTML
+// and never run this, which is why the tags also have generic static
+// fallbacks in <head> — this only helps the smaller set of previewers that do
+// execute JS (e.g. opening the link directly in a browser tab).
+function updateShareMeta() {
+  const title = `${CONFIG.businessName} — Book Online`;
+  const desc = `Book your appointment with ${CONFIG.businessName} online in seconds.`;
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.content = value; };
+  set('og-title', title);
+  set('og-description', desc);
+  set('twitter-title', title);
+  set('twitter-description', desc);
 }
 
 /* ----------------------------------------------------------------
@@ -1123,7 +1223,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   r.style.setProperty('--accent-dark',  CONFIG.accentColorDark);
   r.style.setProperty('--accent-tint',  hexRgba(CONFIG.accentColor, 0.07));
   r.style.setProperty('--accent-focus', hexRgba(CONFIG.accentColor, 0.26));
+  applyCategoryFont(CONFIG.category);
   document.title = `${CONFIG.businessName} — Book Online`;
+  updateShareMeta();
 
   renderHero();
 
@@ -1516,6 +1618,8 @@ async function handleSubmit(e) {
 
   const btn  = document.getElementById('submit-btn');
   const txt  = document.getElementById('submit-text');
+  const errEl = document.getElementById('e-submit');
+  errEl.classList.remove('show');
   btn.disabled = true;
   btn.classList.add('loading');
   txt.textContent = 'Sending…';
@@ -1545,28 +1649,47 @@ async function handleSubmit(e) {
     submittedAt: new Date().toISOString(),
   };
 
-  // Save booking to Supabase
+  // Booking creation goes through the server (api/create-booking.js) rather
+  // than a direct client insert — it's rate-limited and honeypot-checked, and
+  // it re-validates the slot/service/price server-side instead of trusting
+  // whatever this page sends. A rejection here (slot just taken, etc.) is a
+  // real, expected outcome now, so it must NOT show the success screen.
   let insertedId = null;
   try {
-    const { data, error } = await supabaseClient.from('bookings').insert({
-      business_id:    CONFIG.businessId,
-      service_name:   S.service.name,
-      service_id:     String(S.service.id),
-      booking_date:   S.dateISO,
-      booking_time:   S.time24,
-      duration:       S.service.duration,
-      price:          S.service.price,
-      customer_name:  name,
-      customer_email: email,
-      customer_phone: phone,
-      customer_note:  note,
-      stylist_id:     S.stylistId || null,
-      status:         'pending',
-    }).select('id').single();
-    if (error) throw error;
-    insertedId = data && data.id;
+    const r = await fetch('/api/create-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId: CONFIG.businessId,
+        serviceId: S.service.id,
+        stylistId: S.stylistId || null,
+        bookingDate: S.dateISO,
+        bookingTime: S.time24,
+        customerName: name,
+        customerEmail: email,
+        customerPhone: phone,
+        customerNote: note,
+        company_url: document.getElementById('f-company-url').value, // honeypot
+      }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      errEl.textContent = body.error || 'Could not send your booking. Please try again.';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      txt.textContent = 'Confirm Booking Request →';
+      return;
+    }
+    insertedId = body.id;
   } catch (err) {
-    console.error('[booking] Supabase insert error:', err);
+    console.error('[booking] create-booking request failed:', err);
+    errEl.textContent = 'Network error. Please check your connection and try again.';
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    txt.textContent = 'Confirm Booking Request →';
+    return;
   }
 
   // Fire-and-forget confirmation emails (customer + salon owner). Won't block
