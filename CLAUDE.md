@@ -16,6 +16,23 @@ here join the same `streamline_hq.prospects` funnel that repo owns. See
 repo ran on *before* that cutover. It's not part of the live system — don't
 point migrations, MCP connections, or env vars at it.
 
+## Email (Brevo)
+
+- **Account email:** `streamline.dev.build@gmail.com` — `app.brevo.com` → SMTP
+  & API → API Keys is where the key lives / gets rotated.
+- Every transactional email (welcome, booking confirmations, reminders, PIN
+  resets — all routed through `api/_email.js`) reads `BREVO_API_KEY` +
+  `BREVO_FROM`. Set in Vercel (Settings → Environment Variables) for
+  Production, and in local `.env` (gitignored) for `vercel dev`.
+- **2026-07-22 incident:** `BREVO_API_KEY` existed in Vercel Production but
+  its *value* was blank. `api/_email.js` treats a missing/empty key as "skip
+  gracefully" by design (so a mail outage never blocks signup/booking) — but
+  that also means it failed 100% silently, with no error anywhere, for
+  however long it was blank. If a user ever reports "I never got an email"
+  for anything (welcome mail, PIN reset, booking confirmation), check this
+  env var's actual value first, not just whether the name exists — `vercel
+  env ls` shows a var is *set*, not what it's set *to*.
+
 ## Structure
 
 - Static HTML + Vercel serverless functions (`api/*.js`, CommonJS), no build

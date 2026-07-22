@@ -68,9 +68,39 @@ module.exports = async (req, res) => {
         .update({ slot_interval: Math.round(v) })
         .eq('id', businessId);
       if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'logo_size') {
+      const v = data && data.logo_size;
+      const allowed = ['small', 'medium', 'large'];
+      // 'medium' clears back to null (the original, pre-this-feature default
+      // size) rather than being stored as its own explicit value.
+      const patch = { logo_size: v === 'medium' ? null : v };
+      if (patch.logo_size !== null && !allowed.includes(patch.logo_size)) {
+        res.status(400).json({ error: 'logo_size must be small, medium, or large' });
+        return;
+      }
+      const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+    } else if (type === 'banner_preset') {
+      // Mirrors index.html's BANNER_PRESET_IDS — free craft customization,
+      // not a premium gate, so no isFreeAccent()-style check needed here.
+      const allowed = ['soft-glow', 'dot-grid', 'deep'];
+      const v = data && data.banner_preset;
+      const patch = { banner_preset: v === 'default' ? null : v };
+      if (patch.banner_preset !== null && !allowed.includes(patch.banner_preset)) {
+        res.status(400).json({ error: 'Unknown banner preset' });
+        return;
+      }
+      const { error } = await supabase.from('businesses').update(patch).eq('id', businessId);
+      if (error) { res.status(500).json({ error: error.message }); return; }
     } else if (type === 'branding') {
       const patch = {};
       if (typeof data.name === 'string' && data.name.trim()) patch.name = data.name.trim();
+      // Free for every business. Empty string clears it back to the public
+      // page's generic fallback ("Book your appointment online").
+      if (typeof data.tagline === 'string') {
+        const t = data.tagline.trim().slice(0, 160);
+        patch.tagline = t === '' ? null : t;
+      }
       // Free tier may CHANGE its accent only to a colour the system offers
       // (see _brand.js), but may always KEEP whatever it already has.
       //

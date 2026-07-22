@@ -85,8 +85,10 @@
     :root[data-display="sans"] {
       --serif: 'Outfit', 'DM Sans', -apple-system, sans-serif;
     }
-    [data-display="sans"] .hero-initials  { font-size: 62px; font-weight: 600; letter-spacing: -0.05em; }
-    [data-display="sans"] .biz-name       { font-size: 32px; font-weight: 600; letter-spacing: -0.025em; }
+    /* .hero-initials is sized proportionally to --logo-size (see HERO block
+       below), so only weight/tracking need correcting here, not a fixed size. */
+    [data-display="sans"] .hero-initials  { font-weight: 600; letter-spacing: -0.03em; }
+    [data-display="sans"] .biz-name       { font-size: 29px; font-weight: 600; letter-spacing: -0.025em; }
     [data-display="sans"] .step-heading    { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
     [data-display="sans"] .svc-name        { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
     [data-display="sans"] .date-num        { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
@@ -118,66 +120,132 @@
     }
 
     /* ================================================================
-       HERO
+       HERO — cover backdrop (photo, or a restrained gradient+texture
+       placeholder) with a rounded-square avatar overlapping its bottom
+       edge, business name + bio sitting on the plain page background
+       below so they're always legible regardless of the tenant's own
+       photo or accent hue. Previously these were two disconnected
+       stacked blocks (a name/tagline block, then a separate photo-or-
+       giant-initials rectangle) — this unifies them into one composition
+       with real layering instead of flat stacking, without introducing
+       any new font, palette family, or per-tenant colour beyond the
+       existing single accent hue.
        ================================================================ */
-    #site-header {
-      padding: 36px 0 12px;
-      text-align: center;
-    }
+    #hero-image-wrap { padding-top: 32px; }
 
-    .hero-image {
+    .hero-cover {
       width: 100%;
       max-width: 720px;
-      margin: 0 auto 28px;
-      height: 220px;
+      margin: 0 auto;
+      height: 190px;
       border-radius: var(--radius);
       overflow: hidden;
       position: relative;
-      background: linear-gradient(135deg, var(--accent-soft) 0%, var(--neutral) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: linear-gradient(160deg, var(--accent-soft) 0%, var(--neutral) 75%);
       box-shadow: var(--shadow);
     }
-    .hero-image img {
+    .hero-cover img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
-    .hero-initials {
-      font-family: var(--serif);
-      font-size: 78px;
-      font-weight: 500;
-      color: var(--accent);
-      letter-spacing: -0.04em;
-      line-height: 1;
-      opacity: 0.85;
+    /* CSS-only hairline weave for tenants with no uploaded photo — enough
+       presence that the cover never reads as an empty void, restrained
+       enough (5% opacity, single hue from the tenant's own accent) that it
+       doesn't read as a stock "gradient blob" hero. */
+    .hero-cover.placeholder::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: repeating-linear-gradient(135deg, var(--accent) 0px, var(--accent) 1px, transparent 1px, transparent 22px);
+      opacity: 0.05;
     }
 
-    .logo-img {
-      max-width: 160px;
-      max-height: 60px;
-      object-fit: contain;
+    /* Banner presets — curated backgrounds for tenants with no uploaded
+       photo, all built from the tenant's own accent hue so every option
+       always looks coherent regardless of colour. Each preset owns its own
+       texture treatment rather than sharing the default hairline weave, so
+       they read as genuinely distinct choices, not one pattern recoloured. */
+    .hero-cover.placeholder[data-banner-preset="soft-glow"] {
+      background: radial-gradient(circle at 50% 25%, var(--accent-soft) 0%, var(--neutral) 72%);
+    }
+    .hero-cover.placeholder[data-banner-preset="soft-glow"]::before { content: none; }
+
+    .hero-cover.placeholder[data-banner-preset="dot-grid"] {
+      background: var(--neutral);
+    }
+    .hero-cover.placeholder[data-banner-preset="dot-grid"]::before {
+      background-image: radial-gradient(var(--accent) 1.5px, transparent 1.5px);
+      background-size: 18px 18px;
+      opacity: 0.14;
+    }
+
+    .hero-cover.placeholder[data-banner-preset="deep"] {
+      background: linear-gradient(160deg, var(--accent) 0%, var(--accent-dark) 100%);
+    }
+    .hero-cover.placeholder[data-banner-preset="deep"]::before { content: none; }
+
+    #site-header {
+      padding: 0 0 12px;
+      text-align: center;
+    }
+
+    .hero-avatar-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: -44px;   /* pulls the avatar up over the cover's bottom edge */
+      margin-bottom: 16px;
+    }
+
+    .hero-avatar {
+      --logo-size: 88px;   /* medium, the default when logo_size is unset */
+      width: var(--logo-size);
+      height: var(--logo-size);
+      flex-shrink: 0;
+      border-radius: 22px;
+      background: var(--surface);
+      border: 3px solid var(--surface);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .hero-avatar[data-logo-size="small"] { --logo-size: 64px; }
+    .hero-avatar[data-logo-size="large"] { --logo-size: 116px; }
+    .hero-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       display: block;
-      margin: 0 auto 14px;
+    }
+    .hero-avatar .hero-initials {
+      font-family: var(--serif);
+      font-size: calc(var(--logo-size) * 0.42);
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+      line-height: 1;
     }
 
     .biz-name {
       font-family: var(--serif);
-      font-size: 40px;
+      font-size: 36px;
       font-weight: 500;
       color: var(--text-1);
       letter-spacing: -0.01em;
-      line-height: 1.1;
+      line-height: 1.15;
     }
 
     .biz-tagline {
       font-size: 14px;
       color: var(--text-2);
-      margin-top: 8px;
+      margin: 8px auto 0;
+      max-width: 46ch;
       font-weight: 400;
       letter-spacing: 0.01em;
+      line-height: 1.55;
+      text-wrap: pretty;
     }
 
     .hero-rule {
@@ -693,6 +761,28 @@
 
     .book-again-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+    /* Grow nudge — shown only on a successful booking, deliberately quiet:
+       small, muted, dismissible, never inserted anywhere in the active
+       booking flow. Builds on the existing footer "want a page like this?"
+       link rather than competing with it. */
+    .grow-nudge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 22px;
+      padding: 10px 14px;
+      background: var(--neutral);
+      border-radius: 999px;
+      font-size: 12.5px;
+      color: var(--text-2);
+    }
+    .grow-nudge a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    .grow-nudge a:hover { text-decoration: underline; }
+    .grow-nudge button {
+      background: none; border: none; color: var(--text-3); cursor: pointer;
+      font-size: 15px; line-height: 1; padding: 0 0 0 4px;
+    }
+
     /* ================================================================
        FOOTER
        ================================================================ */
@@ -725,10 +815,14 @@
       .services-grid  { grid-template-columns: 1fr; }
       .time-grid      { grid-template-columns: repeat(3, 1fr); gap: 8px; }
       main            { padding: 20px 0 80px; }
-      #site-header    { padding: 24px 0 8px; }
-      .hero-image     { height: 170px; margin-bottom: 22px; border-radius: var(--radius-sm); }
-      .hero-initials  { font-size: 56px; }
-      .biz-name       { font-size: 30px; line-height: 1.15; }
+      #hero-image-wrap { padding-top: 22px; }
+      #site-header    { padding: 0 0 8px; }
+      .hero-cover     { height: 150px; border-radius: var(--radius-sm); }
+      .hero-avatar-wrap { margin-top: -36px; }
+      .hero-avatar    { --logo-size: 72px; }
+      .hero-avatar[data-logo-size="small"] { --logo-size: 56px; }
+      .hero-avatar[data-logo-size="large"] { --logo-size: 92px; }
+      .biz-name       { font-size: 28px; line-height: 1.15; }
       .step-heading   { font-size: 21px; }
       .success-title  { font-size: 26px; }
       .container      { padding: 0 16px; }
@@ -754,11 +848,13 @@
 <!-- ================================================================
      HEADER
      ================================================================ -->
+<!-- Cover renders first so the avatar below can overlap its bottom edge
+     via negative margin — the DOM order is load-bearing for that layering. -->
+<div class="container" id="hero-image-wrap"></div>
+
 <header id="site-header">
   <div class="container" id="header-inner"></div>
 </header>
-
-<div class="container" id="hero-image-wrap"></div>
 
 <!-- ================================================================
      MAIN
@@ -878,6 +974,7 @@
       <h2 class="success-title">Booking Request Sent!</h2>
       <p  class="success-msg"   id="success-msg"></p>
       <button class="book-again-btn" onclick="resetBooking()">Book Another Appointment</button>
+      <div id="grow-nudge" style="display:none"></div>
     </div>
 
   </div>
@@ -891,8 +988,8 @@
     <div class="footer-biz"  id="footer-biz"></div>
     <div class="footer-social" id="footer-social"></div>
     <div class="footer-pow" id="footer-pow">
-      Powered by <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">Streamline</a>
-      &middot; <a href="https://streamline-automations.agency/" target="_blank" rel="noopener">want a page like this?</a>
+      Powered by <a href="https://streamline-automations.co.za/" target="_blank" rel="noopener">Streamline</a>
+      &middot; <a href="https://streamline-automations.co.za/" target="_blank" rel="noopener">want a page like this?</a>
     </div>
   </div>
 </footer>
@@ -1028,6 +1125,8 @@ async function loadBusinessData() {
     accentColor: business.accent_color || '#c084fc',
     accentColorDark: business.accent_dark || '#9333ea',
     category: business.category || null, // null until 006 lands / for manual builds
+    logoSize: business.logo_size || null, // null = default medium avatar size
+    bannerPreset: business.banner_preset || null, // null = original gradient placeholder
     ownerEmail: business.owner_email || '',
     phone: business.phone || '',
     instagramUrl: business.instagram_url || '',
@@ -1285,26 +1384,46 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Curated backgrounds offered for the "no uploaded photo" cover state (see
+// the CSS block above). Unknown/invalid values (bad data, an old preset id
+// that got removed) safely fall through to the original plain gradient.
+const BANNER_PRESET_IDS = new Set(['soft-glow', 'dot-grid', 'deep']);
+
 function renderHero() {
-  // Header block — name + tagline (logo replaces name if present).
-  const h = document.getElementById('header-inner');
-  if (CONFIG.logoUrl) {
-    h.innerHTML = `<img class="logo-img" src="${escapeHtml(CONFIG.logoUrl)}" alt="${escapeHtml(CONFIG.businessName)}" />`;
+  const presetAttr = BANNER_PRESET_IDS.has(CONFIG.bannerPreset) ? ` data-banner-preset="${CONFIG.bannerPreset}"` : '';
+
+  // Cover — photo, or a restrained gradient+texture placeholder. Renders
+  // first (see the HTML comment at #hero-image-wrap) so the avatar below
+  // can overlap its bottom edge. The preset attribute is applied even on the
+  // photo branch (inert unless the photo fails to load) so a broken image
+  // falls back to the tenant's chosen preset, not always the plain default.
+  const wrap = document.getElementById('hero-image-wrap');
+  if (CONFIG.imageUrl) {
+    // onerror swaps in the textured placeholder instead of a broken-image
+    // icon — a dead/expired photo URL (seen in real data: an expired Google
+    // Business Profile photo link) must never look broken to a customer.
+    wrap.innerHTML = `<div class="hero-cover"${presetAttr}><img src="${escapeHtml(CONFIG.imageUrl)}" alt="${escapeHtml(CONFIG.businessName)}" loading="lazy" onerror="this.closest('.hero-cover').classList.add('placeholder'); this.remove();" /></div>`;
   } else {
-    h.innerHTML = `<div class="biz-name">${escapeHtml(CONFIG.businessName)}</div>`;
+    wrap.innerHTML = `<div class="hero-cover placeholder"${presetAttr}></div>`;
   }
+
+  // Avatar (logo, or initials) + name + bio. The business name always
+  // renders as real text now, regardless of whether a logo is set — a
+  // logo used to replace the name outright, which assumed every uploaded
+  // logo was a wordmark; showing both (like any profile-style header:
+  // mark + name) is legible for icon-style logos too, and reads as
+  // deliberate rather than half-finished for wordmark logos.
+  const h = document.getElementById('header-inner');
+  const avatarInner = CONFIG.logoUrl
+    ? `<img src="${escapeHtml(CONFIG.logoUrl)}" alt="${escapeHtml(CONFIG.businessName)} logo" />`
+    : `<span class="hero-initials">${escapeHtml(getInitials(CONFIG.businessName))}</span>`;
+  const sizeAttr = (CONFIG.logoSize === 'small' || CONFIG.logoSize === 'large') ? ` data-logo-size="${CONFIG.logoSize}"` : '';
+  h.innerHTML = `<div class="hero-avatar-wrap"><div class="hero-avatar"${sizeAttr}>${avatarInner}</div></div>`;
+  h.innerHTML += `<div class="biz-name">${escapeHtml(CONFIG.businessName)}</div>`;
   if (CONFIG.tagline) {
     h.innerHTML += `<div class="biz-tagline">${escapeHtml(CONFIG.tagline)}</div>`;
   }
   h.innerHTML += `<div class="hero-rule"></div>`;
-
-  // Hero image (or initials placeholder)
-  const wrap = document.getElementById('hero-image-wrap');
-  if (CONFIG.imageUrl) {
-    wrap.innerHTML = `<div class="hero-image"><img src="${escapeHtml(CONFIG.imageUrl)}" alt="${escapeHtml(CONFIG.businessName)}" loading="lazy" /></div>`;
-  } else {
-    wrap.innerHTML = `<div class="hero-image"><span class="hero-initials">${escapeHtml(getInitials(CONFIG.businessName))}</span></div>`;
-  }
 }
 
 /* ----------------------------------------------------------------
@@ -1721,6 +1840,27 @@ async function handleSubmit(e) {
 /* ----------------------------------------------------------------
    SUCCESS STATE
    ---------------------------------------------------------------- */
+// Suppressed for 14 days per browser once dismissed — long enough that a
+// repeat customer of the same tenant isn't nagged every visit, short enough
+// to still reach new customers on the same device over time. Never shown at
+// all for white-label tenants (showStreamlinePromo === false) — a business
+// that paid to remove Streamline branding must never have a "want your own
+// Streamline page?" prompt shown to their customers regardless.
+const GROW_NUDGE_KEY = 'sa_grow_nudge_dismissed_at';
+const GROW_NUDGE_TTL = 14 * 24 * 60 * 60 * 1000;
+
+function growNudgeDismissed() {
+  try {
+    const ts = parseInt(localStorage.getItem(GROW_NUDGE_KEY) || '0', 10);
+    return ts && (Date.now() - ts) < GROW_NUDGE_TTL;
+  } catch { return false; }
+}
+function dismissGrowNudge() {
+  try { localStorage.setItem(GROW_NUDGE_KEY, String(Date.now())); } catch {}
+  const el = document.getElementById('grow-nudge');
+  if (el) el.style.display = 'none';
+}
+
 function showSuccess(customerName) {
   document.getElementById('steps-outer').style.display  = 'none';
   document.getElementById('progress-wrap').style.display = 'none';
@@ -1733,6 +1873,14 @@ function showSuccess(customerName) {
   const old = document.querySelector('.success-svg');
   const fresh = old.cloneNode(true);
   old.replaceWith(fresh);
+
+  const nudge = document.getElementById('grow-nudge');
+  if (CONFIG.showStreamlinePromo !== false && !growNudgeDismissed()) {
+    nudge.innerHTML = `<div class="grow-nudge"><span>Booked with ease? <a href="https://streamline-automations.co.za/" target="_blank" rel="noopener">Get a free page like this</a> for your own business.</span><button type="button" onclick="dismissGrowNudge()" aria-label="Dismiss">×</button></div>`;
+    nudge.style.display = 'block';
+  } else {
+    nudge.style.display = 'none';
+  }
 
   document.getElementById('success-state').classList.add('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });

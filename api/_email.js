@@ -47,7 +47,7 @@ function emailShell({ accent, eyebrow, heading, intro, bodyHtml }) {
       ${bodyHtml}
     </div>
     <p style="text-align:center;color:#A39A8E;font-size:11px;margin:18px 0 0;letter-spacing:0.04em">
-      Booking by Streamline · <a href="https://streamline-automations.agency/" style="color:#A39A8E">streamline-automations.agency</a>
+      Booking by Streamline · <a href="https://streamline-automations.co.za/" style="color:#A39A8E">streamline-automations.co.za</a>
     </p>
   </div></body></html>`;
 }

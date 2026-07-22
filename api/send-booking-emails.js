@@ -78,7 +78,7 @@ function customerEmailHtml(b, biz) {
       </p>
     </div>
     <p style="text-align:center;color:#9ca3af;font-size:11px;margin:18px 0 0;letter-spacing:0.04em">
-      Booking by Streamline · streamline-automations.agency
+      Booking by Streamline · streamline-automations.co.za
     </p>
   </div></body></html>`;
 }

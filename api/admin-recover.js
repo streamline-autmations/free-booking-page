@@ -10,9 +10,17 @@
 // email already on the business record, so whoever asks learns nothing they
 // didn't already have.
 //
-// Response is deliberately identical whether or not the business exists and
-// whether or not the email matched. Otherwise this becomes a free oracle for
-// "which slugs exist" and "who owns them".
+// Response explicitly says whether the business/email matched — chosen over
+// the anti-enumeration-safe generic response so real owners aren't left
+// guessing whether they mistyped something. That's a deliberate trade-off:
+// this does mean the endpoint can be used to probe "does this email own this
+// business". The per-business rate limit below still throttles that probing.
+//
+// The PIN is only invalidated AFTER the new one is confirmed sent — not on
+// email match alone. Doing it the other way (hash written first) meant a
+// Brevo outage or a blank BREVO_API_KEY silently killed the owner's working
+// PIN while the replacement never arrived, locking them out for good with a
+// response that claimed success the whole time.
 
 const { getSupabase, sha256, readBody } = require('./_auth');
 const { sendEmail, emailShell, pinAndLinksHtml } = require('./_email');
@@ -53,12 +61,6 @@ function newPin() {
 }
 
 module.exports = async (req, res) => {
-  // One response for every outcome. Never branch this on what we found.
-  const generic = () => res.status(200).json({
-    ok: true,
-    message: 'If that business and email match our records, a new PIN is on its way.',
-  });
-
   try {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
@@ -84,7 +86,7 @@ module.exports = async (req, res) => {
     }
     // Counted before the lookup so a miss costs an attacker the same as a hit.
     if (hit(bizHits, slug, BIZ_WINDOW_MS, BIZ_MAX, now)) {
-      generic();
+      res.status(429).json({ error: 'Too many reset attempts for this business. Please try again in an hour.' });
       return;
     }
 
@@ -99,22 +101,16 @@ module.exports = async (req, res) => {
       res.status(502).json({ error: 'Could not process that right now. Please try again.' });
       return;
     }
-    // Unknown business, or the email doesn't match the one on file.
-    if (!biz || !biz.owner_email || biz.owner_email.trim().toLowerCase() !== mail) {
-      generic();
+    if (!biz) {
+      res.status(404).json({ error: 'We couldn\'t find a business at that link.' });
+      return;
+    }
+    if (!biz.owner_email || biz.owner_email.trim().toLowerCase() !== mail) {
+      res.status(404).json({ error: 'That email doesn\'t match the one on file for this business.' });
       return;
     }
 
     const pin = newPin();
-    const { error: upErr } = await supabase
-      .from('businesses')
-      .update({ admin_pin_hash: sha256(pin) })
-      .eq('id', slug);
-    if (upErr) {
-      res.status(500).json({ error: 'Could not reset your PIN. Please try again.' });
-      return;
-    }
-
     const base = (process.env.PUBLIC_BASE_URL || 'https://book.streamline-automations.co.za').replace(/\/+$/, '');
     const publicUrl = `${base}/?biz=${slug}`;
     const adminUrl = `${base}/admin?biz=${slug}`;
@@ -127,9 +123,27 @@ module.exports = async (req, res) => {
            + 'If this wasn\'t you, someone knows your business link and email; nothing else about your account has changed.',
       bodyHtml: pinAndLinksHtml({ accent: biz.accent_color, publicUrl, adminUrl, pin }),
     });
-    await sendEmail(biz.owner_email, `Your new PIN for ${biz.name || slug}`, html);
+    const sent = await sendEmail(biz.owner_email, `Your new PIN for ${biz.name || slug}`, html);
 
-    generic();
+    // Don't touch the working PIN until we know the replacement actually
+    // went out — see the file-header note for why this order matters.
+    if (!sent || sent.skipped || !sent.ok) {
+      res.status(502).json({
+        error: 'Your PIN is unchanged — we could not send a reset email right now. Please try again shortly, or contact support if it keeps failing.',
+      });
+      return;
+    }
+
+    const { error: upErr } = await supabase
+      .from('businesses')
+      .update({ admin_pin_hash: sha256(pin) })
+      .eq('id', slug);
+    if (upErr) {
+      res.status(500).json({ error: 'Could not reset your PIN. Please try again.' });
+      return;
+    }
+
+    res.status(200).json({ ok: true, message: 'A new PIN has been emailed to you.' });
   } catch (e) {
     res.status(500).json({ error: 'Could not process that right now. Please try again.' });
   }
